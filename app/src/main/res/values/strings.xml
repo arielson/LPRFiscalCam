@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">LPRFiscalCam</string>
+    <string name="service_failure">Não foi possível efetuar solicitação. Tente novamente.</string>
+    <string name="login">Login</string>
+    <string name="senha">Senha</string>
+    <string name="acessar">Acessar</string>
+    <string name="sair">Sair</string>
+</resources>
