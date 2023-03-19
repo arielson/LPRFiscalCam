@@ -1,14 +1,21 @@
 package br.net.ari.lprfiscalcam
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.Rect
+import android.os.BatteryManager
 import android.os.Bundle
 import android.text.method.ScrollingMovementMethod
 import android.util.Base64
 import android.util.Log
 import android.util.Size
+import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.Surface
+import android.view.WindowManager
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -49,6 +56,9 @@ class CameraActivity : AppCompatActivity() {
     private lateinit var cameraControl : CameraControl
     private lateinit var cameraInfo : CameraInfo
 
+    private lateinit var textViewTemperature : TextView
+    private var intentfilter: IntentFilter? = null
+
     override fun onRequestPermissionsResult(requestCode: Int,
                                             permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -68,11 +78,17 @@ class CameraActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
 
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
         val viewFinder = findViewById<PreviewView>(R.id.viewFinder)
         val textViewPlateLog = findViewById<TextView>(R.id.textViewPlateLog)
+        textViewTemperature = findViewById(R.id.textViewTemperature)
         textViewPlateLog.movementMethod = ScrollingMovementMethod()
 
         PermissionUtils.requestPermission(this, PermissionUtils.cameraPermissions)
+
+        intentfilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        registerReceiver(broadcastreceiver, intentfilter)
 
         try {
             val ocrFile = File(cacheDir, "ocr_data.bin")
@@ -149,6 +165,7 @@ class CameraActivity : AppCompatActivity() {
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
                 val camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
+                camera.cameraControl.cancelFocusAndMetering()
                 cameraControl = camera.cameraControl
                 cameraInfo = camera.cameraInfo
 
@@ -164,14 +181,32 @@ class CameraActivity : AppCompatActivity() {
                 } catch (exc: Exception) {
                     Log.e("Erro", "Use case binding failed $exc")
                 }
-            }, ContextCompat.getMainExecutor(this.applicationContext))
 
-            val scaleGestureDetector = ScaleGestureDetector(this.applicationContext, listener)
-            viewFinder.setOnTouchListener { view, event ->
-                view.performClick()
-                scaleGestureDetector.onTouchEvent(event)
-                return@setOnTouchListener true
-            }
+                val scaleGestureDetector = ScaleGestureDetector(this.applicationContext, listener)
+                viewFinder.setOnTouchListener { view, event ->
+                    view.performClick()
+                    scaleGestureDetector.onTouchEvent(event)
+                    if (event.action == MotionEvent.ACTION_UP) {
+                        val factory: MeteringPointFactory = SurfaceOrientedMeteringPointFactory(
+                            viewFinder.width.toFloat(), viewFinder.height.toFloat()
+                        )
+                        val autoFocusPoint = factory.createPoint(event.x, event.y)
+                        try {
+                            camera.cameraControl.startFocusAndMetering(
+                                FocusMeteringAction.Builder(
+                                    autoFocusPoint,
+                                    FocusMeteringAction.FLAG_AF
+                                ).apply {
+                                    disableAutoCancel()
+                                }.build()
+                            )
+                        } catch (e: CameraInfoUnavailableException) {
+                            Log.d("ERROR", "cannot access camera", e)
+                        }
+                    }
+                    return@setOnTouchListener true
+                }
+            }, ContextCompat.getMainExecutor(this.applicationContext))
 
             manager.eventPlateInfoCallback = { it ->
                 val plate = it._plate_info?._plate_number_asciivar
@@ -301,5 +336,12 @@ class CameraActivity : AppCompatActivity() {
 
     companion object {
         lateinit var fiscalizacao: Fiscalizacao
+    }
+
+    private val broadcastreceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent) {
+            val batteryTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0).toFloat() / 10
+            textViewTemperature.text = "$batteryTemp ${0x00B0.toChar()}C"
+        }
     }
 }
