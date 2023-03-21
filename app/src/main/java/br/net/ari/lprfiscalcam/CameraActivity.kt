@@ -12,10 +12,8 @@ import android.text.method.ScrollingMovementMethod
 import android.util.Base64
 import android.util.Log
 import android.util.Size
-import android.view.MotionEvent
-import android.view.ScaleGestureDetector
-import android.view.Surface
-import android.view.WindowManager
+import android.view.*
+import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -46,6 +44,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.util.concurrent.Executors
+import kotlin.math.roundToInt
 
 
 class CameraActivity : AppCompatActivity() {
@@ -59,19 +58,15 @@ class CameraActivity : AppCompatActivity() {
     private lateinit var textViewTemperature : TextView
     private var intentfilter: IntentFilter? = null
 
+    private val zoomScaleMin = 1.0f
+    private val zoomScaleMax = 8.0f
+    private var zoomScaleCurrent = 1.0f
+    private val zoomScaleFactor = 0.05f
+
+
     override fun onRequestPermissionsResult(requestCode: Int,
                                             permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-    }
-
-    private val listener = object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-        override fun onScale(detector: ScaleGestureDetector): Boolean {
-            val scale = cameraInfo.zoomState.value?.zoomRatio?.times(detector.scaleFactor)
-            if (scale != null) {
-                cameraControl.setZoomRatio(scale)
-            }
-            return true
-        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,6 +79,11 @@ class CameraActivity : AppCompatActivity() {
         val textViewPlateLog = findViewById<TextView>(R.id.textViewPlateLog)
         textViewTemperature = findViewById(R.id.textViewTemperature)
         textViewPlateLog.movementMethod = ScrollingMovementMethod()
+
+        val buttonZoomIn = findViewById<Button>(R.id.buttonZoomIn)
+        val buttonZoomOut = findViewById<Button>(R.id.buttonZoomOut)
+        val buttonZoomZero = findViewById<Button>(R.id.buttonZoomZero)
+        val buttonAutoFoco = findViewById<Button>(R.id.buttonAutoFoco)
 
         PermissionUtils.requestPermission(this, PermissionUtils.cameraPermissions)
 
@@ -169,9 +169,16 @@ class CameraActivity : AppCompatActivity() {
                 cameraControl = camera.cameraControl
                 cameraInfo = camera.cameraInfo
 
+//                val characteristics = Camera2CameraInfo.extractCameraCharacteristics(cameraInfo)
+//                val mono = characteristics.get(CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT)
+//                if (mono == CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT_MONO) {
+//                    Log.d("Mono", "1")
+//                } else if (mono == CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT_MONO) {
+//                    Log.d("Mono", "2")
+//                }
+
                 try {
                     cameraProvider.unbindAll()
-
                     cameraProvider.bindToLifecycle(
                         this,
                         cameraSelector,
@@ -182,30 +189,53 @@ class CameraActivity : AppCompatActivity() {
                     Log.e("Erro", "Use case binding failed $exc")
                 }
 
-                val scaleGestureDetector = ScaleGestureDetector(this.applicationContext, listener)
-                viewFinder.setOnTouchListener { view, event ->
-                    view.performClick()
-                    scaleGestureDetector.onTouchEvent(event)
-                    if (event.action == MotionEvent.ACTION_UP) {
-                        val factory: MeteringPointFactory = SurfaceOrientedMeteringPointFactory(
-                            viewFinder.width.toFloat(), viewFinder.height.toFloat()
-                        )
-                        val autoFocusPoint = factory.createPoint(event.x, event.y)
-                        try {
-                            camera.cameraControl.startFocusAndMetering(
-                                FocusMeteringAction.Builder(
-                                    autoFocusPoint,
-                                    FocusMeteringAction.FLAG_AF
-                                ).apply {
-                                    disableAutoCancel()
-                                }.build()
-                            )
-                        } catch (e: CameraInfoUnavailableException) {
-                            Log.d("ERROR", "cannot access camera", e)
-                        }
+                buttonZoomIn.setOnClickListener {
+                    if (zoomScaleCurrent < zoomScaleMax) {
+                        zoomScaleCurrent += zoomScaleFactor
+                        zoomScaleCurrent = (zoomScaleCurrent * 100.0f).roundToInt() / 100.0f
+
+                        cameraControl.setZoomRatio(zoomScaleCurrent)
+                        buttonAutoFoco.performClick()
                     }
-                    return@setOnTouchListener true
                 }
+
+                buttonZoomOut.setOnClickListener {
+                    if (zoomScaleCurrent > zoomScaleMin) {
+                        zoomScaleCurrent -= zoomScaleFactor
+                        zoomScaleCurrent = (zoomScaleCurrent * 100.0f).roundToInt() / 100.0f
+
+                        cameraControl.setZoomRatio(zoomScaleCurrent)
+                        buttonAutoFoco.performClick()
+                    }
+                }
+
+                buttonZoomZero.setOnClickListener {
+                    zoomScaleCurrent = 1.0f
+                    cameraControl.setZoomRatio(zoomScaleCurrent)
+                    buttonAutoFoco.performClick()
+                }
+
+                buttonAutoFoco.setOnClickListener {
+                    val factory: MeteringPointFactory = SurfaceOrientedMeteringPointFactory(
+                        viewFinder.width.toFloat(), viewFinder.height.toFloat()
+                    )
+                    val centreX = viewFinder.x + viewFinder.width / 2
+                    val centreY = viewFinder.y + viewFinder.height / 2
+                    val autoFocusPoint = factory.createPoint(centreX, centreY)
+                    try {
+                        camera.cameraControl.startFocusAndMetering(
+                            FocusMeteringAction.Builder(
+                                autoFocusPoint,
+                                FocusMeteringAction.FLAG_AF
+                            ).apply {
+                                disableAutoCancel()
+                            }.build()
+                        )
+                    } catch (e: CameraInfoUnavailableException) {
+                        Log.d("ERROR", "cannot access camera", e)
+                    }
+                }
+                buttonAutoFoco.performClick()
             }, ContextCompat.getMainExecutor(this.applicationContext))
 
             manager.eventPlateInfoCallback = { it ->
@@ -341,7 +371,8 @@ class CameraActivity : AppCompatActivity() {
     private val broadcastreceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent) {
             val batteryTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0).toFloat() / 10
-            textViewTemperature.text = "$batteryTemp ${0x00B0.toChar()}C"
+            val batteryTempString = "$batteryTemp ${0x00B0.toChar()}C"
+            textViewTemperature.text = batteryTempString
         }
     }
 }

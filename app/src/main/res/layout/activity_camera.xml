@@ -50,6 +50,46 @@
                 android:layout_width="150dp"
                 android:layout_height="45dp" />
 
+            <Button
+                android:id="@+id/buttonZoomIn"
+                android:background="@drawable/roundedbutton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:text="@string/zoom_in"
+                android:contentDescription="@string/app_name"
+                android:layout_margin="8dp" />
+
+            <Button
+                android:id="@+id/buttonZoomOut"
+                android:background="@drawable/roundedbutton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:text="@string/zoom_out"
+                android:contentDescription="@string/app_name"
+                android:layout_margin="8dp" />
+
+            <Button
+                android:id="@+id/buttonZoomZero"
+                android:background="@drawable/roundedbutton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:text="@string/zoom_zero"
+                android:contentDescription="@string/app_name"
+                android:layout_margin="8dp" />
+
+            <Button
+                android:id="@+id/buttonAutoFoco"
+                android:background="@drawable/roundedbutton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:text="@string/auto_foco"
+                android:contentDescription="@string/app_name"
+                android:layout_margin="8dp" />
+
         </LinearLayout>
 
     </LinearLayout>

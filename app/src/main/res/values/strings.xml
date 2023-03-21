@@ -5,4 +5,8 @@
     <string name="senha">Senha</string>
     <string name="acessar">Acessar</string>
     <string name="sair">Sair</string>
+    <string name="zoom_in">Zoom +</string>
+    <string name="zoom_out">Zoom -</string>
+    <string name="auto_foco">Auto Foco</string>
+    <string name="zoom_zero">Zoom 0</string>
 </resources>
