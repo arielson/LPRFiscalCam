@@ -20,6 +20,7 @@ import retrofit2.Callback
 import retrofit2.Response
 import java.io.IOException
 
+@Suppress("UNCHECKED_CAST")
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -149,10 +150,12 @@ class MainActivity : AppCompatActivity() {
         }
         val buttonAcessar = findViewById<Button>(R.id.buttonAcessar)
         buttonAcessar.setOnClickListener {
+            buttonAcessar.isEnabled = false
             val fiscalizacao = spinnerCamera.selectedItem as Fiscalizacao
             CameraActivity.fiscalizacao = fiscalizacao
             val intent = Intent(this, CameraActivity::class.java)
             startActivity(intent)
+            buttonAcessar.isEnabled = true
         }
         val buttonSair = findViewById<Button>(R.id.buttonSair)
         buttonSair.setOnClickListener {

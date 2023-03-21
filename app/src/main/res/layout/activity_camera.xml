@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/relativeLayoutMainContainer"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -44,11 +45,11 @@
 
             <TextView
                 android:id="@+id/textViewTemperature"
-                android:textSize="30sp"
+                android:textSize="20sp"
                 android:textAlignment="textEnd"
                 android:textColor="@color/white"
-                android:layout_width="150dp"
-                android:layout_height="45dp" />
+                android:layout_width="100dp"
+                android:layout_height="25dp" />
 
             <Button
                 android:id="@+id/buttonZoomIn"
@@ -87,6 +88,16 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="end"
                 android:text="@string/auto_foco"
+                android:contentDescription="@string/app_name"
+                android:layout_margin="8dp" />
+
+            <Button
+                android:id="@+id/buttonExit"
+                android:background="@drawable/roundedbutton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:text="@string/sair"
                 android:contentDescription="@string/app_name"
                 android:layout_margin="8dp" />
 

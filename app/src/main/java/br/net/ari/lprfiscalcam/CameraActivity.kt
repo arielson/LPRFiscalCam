@@ -14,6 +14,7 @@ import android.util.Log
 import android.util.Size
 import android.view.*
 import android.widget.Button
+import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -21,6 +22,9 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import br.net.ari.lprfiscalcam.core.PermissionUtils
 import br.net.ari.lprfiscalcam.core.Utilities
 import br.net.ari.lprfiscalcam.core.YuvImageAnalyzer
@@ -51,6 +55,9 @@ class CameraActivity : AppCompatActivity() {
     private lateinit var manager : VaxtorAlprManager
     private var initOcr : Long = -1
 
+    private lateinit var imageAnalyzer : ImageAnalysis
+    private lateinit var cameraProvider : ProcessCameraProvider
+
     private val cameraExecutor by lazy { Executors.newSingleThreadExecutor() }
     private lateinit var cameraControl : CameraControl
     private lateinit var cameraInfo : CameraInfo
@@ -73,7 +80,14 @@ class CameraActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
 
+        val relativeLayoutMainContainer = findViewById<RelativeLayout>(R.id.relativeLayoutMainContainer)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, relativeLayoutMainContainer).let { controller ->
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+        initOcr = -1
 
         val viewFinder = findViewById<PreviewView>(R.id.viewFinder)
         val textViewPlateLog = findViewById<TextView>(R.id.textViewPlateLog)
@@ -84,6 +98,22 @@ class CameraActivity : AppCompatActivity() {
         val buttonZoomOut = findViewById<Button>(R.id.buttonZoomOut)
         val buttonZoomZero = findViewById<Button>(R.id.buttonZoomZero)
         val buttonAutoFoco = findViewById<Button>(R.id.buttonAutoFoco)
+
+        val buttonExit = findViewById<Button>(R.id.buttonExit)
+        buttonExit.setOnClickListener {
+            buttonExit.isEnabled = false
+            cameraProvider.unbindAll()
+            Thread.sleep(100)
+            imageAnalyzer.clearAnalyzer()
+            Thread.sleep(100)
+            cameraExecutor.shutdown()
+            Thread.sleep(100)
+            manager.finalize()
+            Thread.sleep(100)
+            manager.shutdown()
+            Thread.sleep(100)
+            finish()
+        }
 
         PermissionUtils.requestPermission(this, PermissionUtils.cameraPermissions)
 
@@ -142,16 +172,16 @@ class CameraActivity : AppCompatActivity() {
 
             val cameraProviderFuture = ProcessCameraProvider.getInstance(this.applicationContext)
             cameraProviderFuture.addListener({
-                val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+                cameraProvider = cameraProviderFuture.get()
                 val sizeRotated = Size(1920, 1080)
 
                 val preview = Preview.Builder()
                     .setTargetResolution(sizeRotated)
                     .setTargetRotation(Surface.ROTATION_90)
                     .build()
-                    .also { it.setSurfaceProvider(viewFinder?.surfaceProvider) }
+                    .also { it.setSurfaceProvider(viewFinder.surfaceProvider) }
 
-                val imageAnalyzer = ImageAnalysis.Builder()
+                imageAnalyzer = ImageAnalysis.Builder()
                     .setTargetResolution(sizeRotated)
                     .setTargetRotation(Surface.ROTATION_90)
                     .build()
@@ -161,7 +191,6 @@ class CameraActivity : AppCompatActivity() {
                                 YuvImageAnalyzer(:: onYuvImage)
                             )
                         }
-
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
                 val camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
@@ -356,12 +385,6 @@ class CameraActivity : AppCompatActivity() {
             )
         else if (imagePOJO.imageFormat == ImageFormat.JPEG)
             manager.ocrFindPlatesJPEG(imagePOJO.src)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        manager.shutdown()
-        cameraExecutor.shutdown()
     }
 
     companion object {
