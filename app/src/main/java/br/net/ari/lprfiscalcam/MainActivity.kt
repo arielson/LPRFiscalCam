@@ -3,6 +3,7 @@ package br.net.ari.lprfiscalcam
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.hardware.usb.UsbManager
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -152,9 +153,18 @@ class MainActivity : AppCompatActivity() {
         buttonAcessar.setOnClickListener {
             buttonAcessar.isEnabled = false
             val fiscalizacao = spinnerCamera.selectedItem as Fiscalizacao
-            CameraActivity.fiscalizacao = fiscalizacao
-            val intent = Intent(this, CameraActivity::class.java)
-            startActivity(intent)
+
+            val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
+            if (usbManager.deviceList.isEmpty()) {
+                CameraActivity.fiscalizacao = fiscalizacao
+                val intent = Intent(this, CameraActivity::class.java)
+                startActivity(intent)
+            } else {
+                CameraUSBActivity.fiscalizacaoId = fiscalizacao.id
+                val intent = Intent(this, CameraUSBActivity::class.java)
+                startActivity(intent)
+            }
+
             buttonAcessar.isEnabled = true
         }
         val buttonSair = findViewById<Button>(R.id.buttonSair)
@@ -168,5 +178,6 @@ class MainActivity : AppCompatActivity() {
     fun Context.hideKeyboard(view: View) {
         val inputMethodManager = getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
         inputMethodManager.hideSoftInputFromWindow(view.windowToken, 0)
+
     }
 }

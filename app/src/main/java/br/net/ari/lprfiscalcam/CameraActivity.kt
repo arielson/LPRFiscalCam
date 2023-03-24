@@ -1,23 +1,25 @@
 package br.net.ari.lprfiscalcam
 
+import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Bitmap
 import android.graphics.Rect
+import android.hardware.camera2.*
 import android.os.BatteryManager
 import android.os.Bundle
 import android.text.method.ScrollingMovementMethod
 import android.util.Base64
 import android.util.Log
 import android.util.Size
-import android.view.*
-import android.widget.Button
-import android.widget.RelativeLayout
-import android.widget.TextView
-import android.widget.Toast
+import android.view.Surface
+import android.view.WindowManager
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.camera2.interop.Camera2CameraControl
+import androidx.camera.camera2.interop.CaptureRequestOptions
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -48,7 +50,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.util.concurrent.Executors
-import kotlin.math.roundToInt
 
 
 class CameraActivity : AppCompatActivity() {
@@ -65,17 +66,14 @@ class CameraActivity : AppCompatActivity() {
     private lateinit var textViewTemperature : TextView
     private var intentfilter: IntentFilter? = null
 
-    private val zoomScaleMin = 1.0f
-    private val zoomScaleMax = 8.0f
-    private var zoomScaleCurrent = 1.0f
-    private val zoomScaleFactor = 0.05f
-
+    private var minimumLens: Float? = null
 
     override fun onRequestPermissionsResult(requestCode: Int,
                                             permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
+    @SuppressLint("RestrictedApi", "UnsafeOptInUsageError")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
@@ -94,10 +92,8 @@ class CameraActivity : AppCompatActivity() {
         textViewTemperature = findViewById(R.id.textViewTemperature)
         textViewPlateLog.movementMethod = ScrollingMovementMethod()
 
-        val buttonZoomIn = findViewById<Button>(R.id.buttonZoomIn)
-        val buttonZoomOut = findViewById<Button>(R.id.buttonZoomOut)
-        val buttonZoomZero = findViewById<Button>(R.id.buttonZoomZero)
-        val buttonAutoFoco = findViewById<Button>(R.id.buttonAutoFoco)
+        val seekBarZoom = findViewById<SeekBar>(R.id.seekBarZoom)
+        val seekBarFoco = findViewById<SeekBar>(R.id.seekBarFoco)
 
         val buttonExit = findViewById<Button>(R.id.buttonExit)
         buttonExit.setOnClickListener {
@@ -173,6 +169,7 @@ class CameraActivity : AppCompatActivity() {
             val cameraProviderFuture = ProcessCameraProvider.getInstance(this.applicationContext)
             cameraProviderFuture.addListener({
                 cameraProvider = cameraProviderFuture.get()
+
                 val sizeRotated = Size(1920, 1080)
 
                 val preview = Preview.Builder()
@@ -194,17 +191,24 @@ class CameraActivity : AppCompatActivity() {
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
                 val camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
-                camera.cameraControl.cancelFocusAndMetering()
                 cameraControl = camera.cameraControl
                 cameraInfo = camera.cameraInfo
+                camera.cameraControl.cancelFocusAndMetering()
 
-//                val characteristics = Camera2CameraInfo.extractCameraCharacteristics(cameraInfo)
-//                val mono = characteristics.get(CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT)
-//                if (mono == CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT_MONO) {
-//                    Log.d("Mono", "1")
-//                } else if (mono == CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT_MONO) {
-//                    Log.d("Mono", "2")
-//                }
+                val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+                if (cameraManager.cameraIdList.isNotEmpty()) {
+                    val cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraManager.cameraIdList[0])
+                    val camCharacteristics = cameraCharacteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+                    val isManualFocus = camCharacteristics?.any { it == CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR }
+                    if (isManualFocus == true) {
+                        minimumLens = cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
+                        val camera2CameraControl : Camera2CameraControl = Camera2CameraControl.from(cameraControl)
+                        val captureRequestOptions = CaptureRequestOptions.Builder()
+                            .setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_OFF)
+                            .build()
+                        camera2CameraControl.captureRequestOptions = captureRequestOptions
+                    }
+                }
 
                 try {
                     cameraProvider.unbindAll()
@@ -218,53 +222,40 @@ class CameraActivity : AppCompatActivity() {
                     Log.e("Erro", "Use case binding failed $exc")
                 }
 
-                buttonZoomIn.setOnClickListener {
-                    if (zoomScaleCurrent < zoomScaleMax) {
-                        zoomScaleCurrent += zoomScaleFactor
-                        zoomScaleCurrent = (zoomScaleCurrent * 100.0f).roundToInt() / 100.0f
-
-                        cameraControl.setZoomRatio(zoomScaleCurrent)
-                        buttonAutoFoco.performClick()
+                seekBarZoom.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(
+                        seekBar: SeekBar?,
+                        progress: Int,
+                        fromUser: Boolean
+                    ) {
+                        cameraControl.setLinearZoom(progress / 100.toFloat())
                     }
-                }
 
-                buttonZoomOut.setOnClickListener {
-                    if (zoomScaleCurrent > zoomScaleMin) {
-                        zoomScaleCurrent -= zoomScaleFactor
-                        zoomScaleCurrent = (zoomScaleCurrent * 100.0f).roundToInt() / 100.0f
+                    override fun onStartTrackingTouch(seekBar: SeekBar?) {}
 
-                        cameraControl.setZoomRatio(zoomScaleCurrent)
-                        buttonAutoFoco.performClick()
+                    override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+                })
+
+                seekBarFoco.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(
+                        seekBar: SeekBar?,
+                        progress: Int,
+                        fromUser: Boolean
+                    ) {
+                        val camera2CameraControl : Camera2CameraControl = Camera2CameraControl.from(cameraControl)
+                        val num = progress.toFloat() * minimumLens!! / 100
+                        Log.d("LENS", "$num")
+                        val captureRequestOptions = CaptureRequestOptions.Builder()
+                            .setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_OFF)
+                            .setCaptureRequestOption(CaptureRequest.LENS_FOCUS_DISTANCE, num)
+                            .build()
+                        camera2CameraControl.captureRequestOptions = captureRequestOptions
                     }
-                }
 
-                buttonZoomZero.setOnClickListener {
-                    zoomScaleCurrent = 1.0f
-                    cameraControl.setZoomRatio(zoomScaleCurrent)
-                    buttonAutoFoco.performClick()
-                }
+                    override fun onStartTrackingTouch(seekBar: SeekBar?) {}
 
-                buttonAutoFoco.setOnClickListener {
-                    val factory: MeteringPointFactory = SurfaceOrientedMeteringPointFactory(
-                        viewFinder.width.toFloat(), viewFinder.height.toFloat()
-                    )
-                    val centreX = viewFinder.x + viewFinder.width / 2
-                    val centreY = viewFinder.y + viewFinder.height / 2
-                    val autoFocusPoint = factory.createPoint(centreX, centreY)
-                    try {
-                        camera.cameraControl.startFocusAndMetering(
-                            FocusMeteringAction.Builder(
-                                autoFocusPoint,
-                                FocusMeteringAction.FLAG_AF
-                            ).apply {
-                                disableAutoCancel()
-                            }.build()
-                        )
-                    } catch (e: CameraInfoUnavailableException) {
-                        Log.d("ERROR", "cannot access camera", e)
-                    }
-                }
-                buttonAutoFoco.performClick()
+                    override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+                })
             }, ContextCompat.getMainExecutor(this.applicationContext))
 
             manager.eventPlateInfoCallback = { it ->
@@ -394,8 +385,16 @@ class CameraActivity : AppCompatActivity() {
     private val broadcastreceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent) {
             val batteryTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0).toFloat() / 10
-            val batteryTempString = "$batteryTemp ${0x00B0.toChar()}C"
-            textViewTemperature.text = batteryTempString
+            val batteryTempString = "$batteryTemp${0x00B0.toChar()}C"
+
+            val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+            val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+            val batteryPct = level / scale.toDouble()
+            val bt = (batteryPct * 100).toInt()
+
+            val finalString = "Temp: $batteryTempString | Bat: $bt%"
+
+            textViewTemperature.text = finalString
         }
     }
 }
