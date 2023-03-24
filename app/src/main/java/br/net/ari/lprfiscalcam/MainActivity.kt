@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import br.net.ari.lprfiscalcam.adapters.FiscalizacaoAdapter
 import br.net.ari.lprfiscalcam.core.PermissionUtils
@@ -151,6 +152,26 @@ class MainActivity : AppCompatActivity() {
         }
         val buttonAcessar = findViewById<Button>(R.id.buttonAcessar)
         buttonAcessar.setOnClickListener {
+            val sharedPreference =  getSharedPreferences("lprfiscalcam",Context.MODE_PRIVATE)
+            if (!sharedPreference.contains("chave")) {
+                val inputEditTextField = EditText(this)
+                val dialog = AlertDialog.Builder(this)
+                    .setTitle("Chave")
+                    .setMessage("Por favor digite a chave")
+                    .setView(inputEditTextField)
+                    .setPositiveButton("OK") { _, _ ->
+                        val editTextInput = inputEditTextField .text.toString()
+                        val editor = sharedPreference.edit()
+                        editor.putString("chave",editTextInput)
+                        editor.apply()
+                    }
+                    .setNegativeButton("Cancelar", null)
+                    .create()
+                dialog.show()
+
+                return@setOnClickListener
+            }
+
             buttonAcessar.isEnabled = false
             val fiscalizacao = spinnerCamera.selectedItem as Fiscalizacao
 

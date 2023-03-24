@@ -17,6 +17,7 @@ import android.util.Size
 import android.view.Surface
 import android.view.WindowManager
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.camera2.interop.Camera2CameraControl
 import androidx.camera.camera2.interop.CaptureRequestOptions
@@ -67,6 +68,7 @@ class CameraActivity : AppCompatActivity() {
     private var intentfilter: IntentFilter? = null
 
     private var minimumLens: Float? = null
+    private var minimumLensNum: Float? = null
 
     override fun onRequestPermissionsResult(requestCode: Int,
                                             permissions: Array<String>, grantResults: IntArray) {
@@ -152,12 +154,29 @@ class CameraActivity : AppCompatActivity() {
                 if (teste.isNotEmpty()) {
                     val ret = VaxtorLicensingManager.setC2V(teste)
                     if (ret < -1) {
-                        VaxtorLicensingManager.registerLicense("981287e4-d75e-495e-bf71-dba9f0e31369") { bool, error ->
-                            if (bool) {
-                                initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
-                                Toast.makeText(this.applicationContext, "Success registering license", Toast.LENGTH_SHORT).show()
-                            } else {
-                                Toast.makeText(this.applicationContext, "Error registering license $error", Toast.LENGTH_LONG).show()
+                        val sharedPreference =  getSharedPreferences("lprfiscalcam",Context.MODE_PRIVATE)
+                        val chave = sharedPreference.getString("chave", "")
+                        if (chave!!.isNotEmpty()) {
+                            VaxtorLicensingManager.registerLicense(chave) { bool, _ ->
+                                if (bool) {
+                                    initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
+                                } else {
+                                    val inputEditTextField = EditText(this)
+                                    val dialog = AlertDialog.Builder(this)
+                                        .setTitle("Chave")
+                                        .setMessage("Chave inválida! Por favor digite a chave")
+                                        .setView(inputEditTextField)
+                                        .setPositiveButton("OK") { _, _ ->
+                                            val editTextInput = inputEditTextField .text.toString()
+                                            val editor = sharedPreference.edit()
+                                            editor.putString("chave",editTextInput)
+                                            editor.apply()
+                                            initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
+                                        }
+                                        .setNegativeButton("Cancelar", null)
+                                        .create()
+                                    dialog.show()
+                                }
                             }
                         }
                     } else {
@@ -243,11 +262,10 @@ class CameraActivity : AppCompatActivity() {
                         fromUser: Boolean
                     ) {
                         val camera2CameraControl : Camera2CameraControl = Camera2CameraControl.from(cameraControl)
-                        val num = progress.toFloat() * minimumLens!! / 100
-                        Log.d("LENS", "$num")
+                        minimumLensNum = progress.toFloat() * minimumLens!! / 100
                         val captureRequestOptions = CaptureRequestOptions.Builder()
                             .setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_OFF)
-                            .setCaptureRequestOption(CaptureRequest.LENS_FOCUS_DISTANCE, num)
+                            .setCaptureRequestOption(CaptureRequest.LENS_FOCUS_DISTANCE, minimumLensNum!!)
                             .build()
                         camera2CameraControl.captureRequestOptions = captureRequestOptions
                     }
@@ -256,6 +274,7 @@ class CameraActivity : AppCompatActivity() {
 
                     override fun onStopTrackingTouch(seekBar: SeekBar?) {}
                 })
+                Toast.makeText(applicationContext, "Ajuste o zoom e foco deslizando na barra ao lado", Toast.LENGTH_LONG).show()
             }, ContextCompat.getMainExecutor(this.applicationContext))
 
             manager.eventPlateInfoCallback = { it ->
