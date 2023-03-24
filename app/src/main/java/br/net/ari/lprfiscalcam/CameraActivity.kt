@@ -54,24 +54,26 @@ import java.util.concurrent.Executors
 
 
 class CameraActivity : AppCompatActivity() {
-    private lateinit var manager : VaxtorAlprManager
-    private var initOcr : Long = -1
+    private lateinit var manager: VaxtorAlprManager
+    private var initOcr: Long = -1
 
-    private lateinit var imageAnalyzer : ImageAnalysis
-    private lateinit var cameraProvider : ProcessCameraProvider
+    private lateinit var imageAnalyzer: ImageAnalysis
+    private lateinit var cameraProvider: ProcessCameraProvider
 
     private val cameraExecutor by lazy { Executors.newSingleThreadExecutor() }
-    private lateinit var cameraControl : CameraControl
-    private lateinit var cameraInfo : CameraInfo
+    private lateinit var cameraControl: CameraControl
+    private lateinit var cameraInfo: CameraInfo
 
-    private lateinit var textViewTemperature : TextView
+    private lateinit var textViewTemperature: TextView
     private var intentfilter: IntentFilter? = null
 
     private var minimumLens: Float? = null
     private var minimumLensNum: Float? = null
 
-    override fun onRequestPermissionsResult(requestCode: Int,
-                                            permissions: Array<String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>, grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
@@ -80,12 +82,14 @@ class CameraActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
 
-        val relativeLayoutMainContainer = findViewById<RelativeLayout>(R.id.relativeLayoutMainContainer)
+        val relativeLayoutMainContainer =
+            findViewById<RelativeLayout>(R.id.relativeLayoutMainContainer)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, relativeLayoutMainContainer).let { controller ->
             controller.hide(WindowInsetsCompat.Type.systemBars())
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
         initOcr = -1
 
@@ -137,7 +141,7 @@ class CameraActivity : AppCompatActivity() {
                 grammar_strict = 1,
                 min_global_confidence = 80,
                 min_character_confidence = 70,
-                same_plate_delay = 8,
+                same_plate_delay = 20,
                 same_plate_max_chars_distance = 1,
                 max_slop_angle = 30,
                 background_mode = 1,
@@ -149,40 +153,57 @@ class CameraActivity : AppCompatActivity() {
             )
 
             initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
-            val teste = VaxtorLicensingManager.getC2V()
+            val c2v = VaxtorLicensingManager.getC2V()
+            val sharedPreference = getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
             if (initOcr < 0) {
-                if (teste.isNotEmpty()) {
-                    val ret = VaxtorLicensingManager.setC2V(teste)
+                if (c2v.isNotEmpty()) {
+                    val ret = VaxtorLicensingManager.setC2V(c2v)
                     if (ret < -1) {
-                        val sharedPreference =  getSharedPreferences("lprfiscalcam",Context.MODE_PRIVATE)
-                        val chave = sharedPreference.getString("chave", "")
-                        if (chave!!.isNotEmpty()) {
-                            VaxtorLicensingManager.registerLicense(chave) { bool, _ ->
-                                if (bool) {
-                                    initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
-                                } else {
-                                    val inputEditTextField = EditText(this)
-                                    val dialog = AlertDialog.Builder(this)
-                                        .setTitle("Chave")
-                                        .setMessage("Chave inválida! Por favor digite a chave")
-                                        .setView(inputEditTextField)
-                                        .setPositiveButton("OK") { _, _ ->
-                                            val editTextInput = inputEditTextField .text.toString()
-                                            val editor = sharedPreference.edit()
-                                            editor.putString("chave",editTextInput)
-                                            editor.apply()
-                                            initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
-                                        }
-                                        .setNegativeButton("Cancelar", null)
-                                        .create()
-                                    dialog.show()
+                        if (!sharedPreference.contains("chave")) {
+                            val chave = sharedPreference.getString("chave", "")
+                            if (chave != null && chave.isNotEmpty()) {
+                                VaxtorLicensingManager.registerLicense(chave) { bool, _ ->
+                                    if (bool) {
+                                        initOcr = manager.initOcr(
+                                            ocrInitialiseArgs,
+                                            FirebaseCrashlytics.getInstance()
+                                        )
+                                    } else {
+                                        val inputEditTextField = EditText(this)
+                                        val dialog = AlertDialog.Builder(this)
+                                            .setTitle("Chave")
+                                            .setMessage("Chave inválida! Por favor digite a chave")
+                                            .setView(inputEditTextField)
+                                            .setPositiveButton("OK") { _, _ ->
+                                                val editTextInput =
+                                                    inputEditTextField.text.toString()
+                                                val editor = sharedPreference.edit()
+                                                editor.putString("chave", editTextInput)
+                                                editor.apply()
+                                                initOcr = manager.initOcr(
+                                                    ocrInitialiseArgs,
+                                                    FirebaseCrashlytics.getInstance()
+                                                )
+                                            }
+                                            .setNegativeButton("Cancelar", null)
+                                            .create()
+                                        dialog.show()
+                                    }
                                 }
                             }
                         }
                     } else {
-                        initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
+                        val editor = sharedPreference.edit()
+                        editor.putString("c2v", c2v)
+                        editor.apply()
+                        initOcr =
+                            manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
                     }
                 }
+            } else if (!sharedPreference.contains("c2v")) {
+                val editor = sharedPreference.edit()
+                editor.putString("c2v", c2v)
+                editor.apply()
             }
 
             val cameraProviderFuture = ProcessCameraProvider.getInstance(this.applicationContext)
@@ -201,29 +222,38 @@ class CameraActivity : AppCompatActivity() {
                     .setTargetResolution(sizeRotated)
                     .setTargetRotation(Surface.ROTATION_90)
                     .build()
-                        .also {
-                            it.setAnalyzer(
-                                cameraExecutor,
-                                YuvImageAnalyzer(:: onYuvImage)
-                            )
-                        }
+                    .also {
+                        it.setAnalyzer(
+                            cameraExecutor,
+                            YuvImageAnalyzer(::onYuvImage)
+                        )
+                    }
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-                val camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
+                val camera =
+                    cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
                 cameraControl = camera.cameraControl
                 cameraInfo = camera.cameraInfo
                 camera.cameraControl.cancelFocusAndMetering()
 
                 val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
                 if (cameraManager.cameraIdList.isNotEmpty()) {
-                    val cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraManager.cameraIdList[0])
-                    val camCharacteristics = cameraCharacteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
-                    val isManualFocus = camCharacteristics?.any { it == CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR }
+                    val cameraCharacteristics =
+                        cameraManager.getCameraCharacteristics(cameraManager.cameraIdList[0])
+                    val camCharacteristics =
+                        cameraCharacteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+                    val isManualFocus =
+                        camCharacteristics?.any { it == CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR }
                     if (isManualFocus == true) {
-                        minimumLens = cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
-                        val camera2CameraControl : Camera2CameraControl = Camera2CameraControl.from(cameraControl)
+                        minimumLens =
+                            cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
+                        val camera2CameraControl: Camera2CameraControl =
+                            Camera2CameraControl.from(cameraControl)
                         val captureRequestOptions = CaptureRequestOptions.Builder()
-                            .setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_OFF)
+                            .setCaptureRequestOption(
+                                CaptureRequest.CONTROL_AF_MODE,
+                                CameraMetadata.CONTROL_AF_MODE_OFF
+                            )
                             .build()
                         camera2CameraControl.captureRequestOptions = captureRequestOptions
                     }
@@ -247,7 +277,11 @@ class CameraActivity : AppCompatActivity() {
                         progress: Int,
                         fromUser: Boolean
                     ) {
-                        cameraControl.setLinearZoom(progress / 100.toFloat())
+                        val zoom = progress / 100.toFloat()
+                        cameraControl.setLinearZoom(zoom)
+                        val editor = sharedPreference.edit()
+                        editor.putInt("zoom", progress)
+                        editor.apply()
                     }
 
                     override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -255,26 +289,69 @@ class CameraActivity : AppCompatActivity() {
                     override fun onStopTrackingTouch(seekBar: SeekBar?) {}
                 })
 
+                val camera2CameraControl: Camera2CameraControl =
+                    Camera2CameraControl.from(cameraControl)
                 seekBarFoco.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(
                         seekBar: SeekBar?,
                         progress: Int,
                         fromUser: Boolean
                     ) {
-                        val camera2CameraControl : Camera2CameraControl = Camera2CameraControl.from(cameraControl)
                         minimumLensNum = progress.toFloat() * minimumLens!! / 100
-                        val captureRequestOptions = CaptureRequestOptions.Builder()
-                            .setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_OFF)
-                            .setCaptureRequestOption(CaptureRequest.LENS_FOCUS_DISTANCE, minimumLensNum!!)
-                            .build()
-                        camera2CameraControl.captureRequestOptions = captureRequestOptions
+                        if (minimumLens != null) {
+                            val captureRequestOptions = CaptureRequestOptions.Builder()
+                                .setCaptureRequestOption(
+                                    CaptureRequest.CONTROL_AF_MODE,
+                                    CameraMetadata.CONTROL_AF_MODE_OFF
+                                )
+                                .setCaptureRequestOption(
+                                    CaptureRequest.LENS_FOCUS_DISTANCE,
+                                    minimumLensNum!!
+                                )
+                                .build()
+                            camera2CameraControl.captureRequestOptions = captureRequestOptions
+                            val editor = sharedPreference.edit()
+                            editor.putInt("foco", progress)
+                            editor.apply()
+                        }
                     }
 
                     override fun onStartTrackingTouch(seekBar: SeekBar?) {}
 
                     override fun onStopTrackingTouch(seekBar: SeekBar?) {}
                 })
-                Toast.makeText(applicationContext, "Ajuste o zoom e foco deslizando na barra ao lado", Toast.LENGTH_LONG).show()
+
+                Toast.makeText(
+                    applicationContext,
+                    "Ajuste o zoom e foco deslizando na barra ao lado",
+                    Toast.LENGTH_LONG
+                ).show()
+
+                if (sharedPreference.contains("zoom")) {
+                    val progress = sharedPreference.getInt("zoom", 0)
+                    seekBarZoom.progress = progress
+                    val zoom = progress / 100.toFloat()
+                    cameraControl.setLinearZoom(zoom)
+                }
+
+                if (sharedPreference.contains("foco")) {
+                    val progress = sharedPreference.getInt("foco", 0)
+                    seekBarFoco.progress = progress
+                    if (minimumLens != null) {
+                        minimumLensNum = progress.toFloat() * minimumLens!! / 100
+                        val captureRequestOptions = CaptureRequestOptions.Builder()
+                            .setCaptureRequestOption(
+                                CaptureRequest.CONTROL_AF_MODE,
+                                CameraMetadata.CONTROL_AF_MODE_OFF
+                            )
+                            .setCaptureRequestOption(
+                                CaptureRequest.LENS_FOCUS_DISTANCE,
+                                minimumLensNum!!
+                            )
+                            .build()
+                        camera2CameraControl.captureRequestOptions = captureRequestOptions
+                    }
+                }
             }, ContextCompat.getMainExecutor(this.applicationContext))
 
             manager.eventPlateInfoCallback = { it ->
@@ -294,32 +371,46 @@ class CameraActivity : AppCompatActivity() {
                                 veiculo?.confianca = confPerc
                                 veiculo?.dispositivo = Utilities.getDeviceName()
                                 if (veiculo?.id!! > 0) {
-                                    val fullText = "* $plate - ${veiculo.pendencia}\n\n${textViewPlateLog.text}\n"
+                                    val fullText =
+                                        "* $plate - ${veiculo.pendencia}\n\n${textViewPlateLog.text}\n"
                                     textViewPlateLog.text = fullText
 
-                                    if (it._source_image != null ) {
-                                        val imagePOJO = Utilities.mapImagePOJO(ImageInfoPOJO(
-                                            _format = it._source_image!!._format,
-                                            _height = it._source_image!!._height,
-                                            _width = it._source_image!!._width,
-                                            _image = it._source_image!!._image,
-                                            _size = it._source_image!!._size
-                                        ))
+                                    if (it._source_image != null) {
+                                        val imagePOJO = Utilities.mapImagePOJO(
+                                            ImageInfoPOJO(
+                                                _format = it._source_image!!._format,
+                                                _height = it._source_image!!._height,
+                                                _width = it._source_image!!._width,
+                                                _image = it._source_image!!._image,
+                                                _size = it._source_image!!._size
+                                            )
+                                        )
 
-                                        var veiculoBitmap = Utilities.bitmapFromImagePojo(imagePOJO!!)!!
-                                        val veiculoImage = Utilities.getScaledImage(veiculoBitmap, 640, 480)
-                                        val veiculoImageBase64 = Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
+                                        var veiculoBitmap =
+                                            Utilities.bitmapFromImagePojo(imagePOJO!!)!!
+                                        val veiculoImage =
+                                            Utilities.getScaledImage(veiculoBitmap, 640, 480)
+                                        val veiculoImageBase64 =
+                                            Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
                                         veiculo.foto2 = veiculoImageBase64
                                         val plateBox = it._plate_info?._plate_bounding_box!!
-                                        val plateRect = Rect(plateBox[0], plateBox[1], plateBox[2], plateBox[3])
+                                        val plateRect =
+                                            Rect(plateBox[0], plateBox[1], plateBox[2], plateBox[3])
                                         veiculoBitmap = Utilities.bitmapFromImagePojo(imagePOJO)!!
-                                        val plateBitamap = Utilities.cropBitmap(veiculoBitmap,
+                                        val plateBitamap = Utilities.cropBitmap(
+                                            veiculoBitmap,
                                             plateRect
                                         )
                                         val byteArrayOutputStream = ByteArrayOutputStream()
-                                        plateBitamap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
-                                        val byteArray: ByteArray = byteArrayOutputStream.toByteArray()
-                                        val plateImageBase64 = Base64.encodeToString(byteArray, Base64.NO_WRAP)
+                                        plateBitamap.compress(
+                                            Bitmap.CompressFormat.PNG,
+                                            100,
+                                            byteArrayOutputStream
+                                        )
+                                        val byteArray: ByteArray =
+                                            byteArrayOutputStream.toByteArray()
+                                        val plateImageBase64 =
+                                            Base64.encodeToString(byteArray, Base64.NO_WRAP)
                                         veiculo.foto1 = plateImageBase64
                                     }
                                     Utilities.service().PostVeiculo(veiculo)
@@ -331,13 +422,15 @@ class CameraActivity : AppCompatActivity() {
                                                 if (!response.isSuccessful) {
                                                     try {
                                                         Toast.makeText(
-                                                            applicationContext, Utilities.analiseException(
+                                                            applicationContext,
+                                                            Utilities.analiseException(
                                                                 response.code(),
                                                                 response.raw().toString(),
                                                                 if (response.errorBody() != null) response.errorBody()!!
                                                                     .string() else null,
                                                                 applicationContext
-                                                            ), Toast.LENGTH_LONG
+                                                            ),
+                                                            Toast.LENGTH_LONG
                                                         ).show()
                                                     } catch (e: IOException) {
                                                         e.printStackTrace()
@@ -350,7 +443,11 @@ class CameraActivity : AppCompatActivity() {
                                                 t: Throwable
                                             ) {
                                                 t.printStackTrace()
-                                                Toast.makeText(applicationContext, "Erro ao acessar servidor. Verifique internet.", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(
+                                                    applicationContext,
+                                                    "Erro ao acessar servidor. Verifique internet.",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
                                             }
                                         })
                                 } else {

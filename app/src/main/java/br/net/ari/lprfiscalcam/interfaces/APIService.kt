@@ -17,7 +17,7 @@ interface APIService {
     ): Call<Cliente?>
 
     @GET("Fiscalizacao/GetByCliente")
-    fun GetFiscalizacoes(): Call<List<Fiscalizacao?>?>
+    fun GetFiscalizacoes(): Call<List<Fiscalizacao>?>
 
     @GET("FiscalizacaoVeiculo/GetFromCameraANPR/{placa}/{fiscalizacaoId}")
     fun GetVeiculo(

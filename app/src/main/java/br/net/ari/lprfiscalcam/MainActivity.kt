@@ -22,7 +22,6 @@ import retrofit2.Callback
 import retrofit2.Response
 import java.io.IOException
 
-@Suppress("UNCHECKED_CAST")
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,10 +59,10 @@ class MainActivity : AppCompatActivity() {
                         if (response.isSuccessful) {
                             Utilities.cliente = response.body()
                             Utilities.service().GetFiscalizacoes()
-                                .enqueue(object : Callback<List<Fiscalizacao?>?> {
+                                .enqueue(object : Callback<List<Fiscalizacao>?> {
                                     override fun onResponse(
-                                        call: Call<List<Fiscalizacao?>?>,
-                                        response: Response<List<Fiscalizacao?>?>
+                                        call: Call<List<Fiscalizacao>?>,
+                                        response: Response<List<Fiscalizacao>?>
                                     ) {
                                         relativeLayoutLoading.visibility = View.GONE
                                         if (response.isSuccessful) {
@@ -74,11 +73,12 @@ class MainActivity : AppCompatActivity() {
                                                 "Bem vindo(a) " + Utilities.cliente?.nome,
                                                 Toast.LENGTH_LONG
                                             ).show()
+                                            val fiscalizacoes = response.body() as List<Fiscalizacao>
                                             val adapter: ArrayAdapter<Fiscalizacao> =
                                                 FiscalizacaoAdapter(
                                                     activity,
                                                     android.R.layout.simple_spinner_item,
-                                                    response.body() as List<Fiscalizacao>
+                                                    fiscalizacoes
                                                 )
                                             spinnerCamera.adapter = adapter
                                             linearLayoutLogin.visibility = View.GONE
@@ -102,7 +102,7 @@ class MainActivity : AppCompatActivity() {
                                     }
 
                                     override fun onFailure(
-                                        call: Call<List<Fiscalizacao?>?>,
+                                        call: Call<List<Fiscalizacao>?>,
                                         t: Throwable
                                     ) {
                                         relativeLayoutLoading.visibility = View.GONE
@@ -162,7 +162,7 @@ class MainActivity : AppCompatActivity() {
                     .setPositiveButton("OK") { _, _ ->
                         val editTextInput = inputEditTextField .text.toString()
                         val editor = sharedPreference.edit()
-                        editor.putString("chave",editTextInput)
+                        editor.putString("chave", editTextInput)
                         editor.apply()
                     }
                     .setNegativeButton("Cancelar", null)
