@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.hardware.usb.UsbManager
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
@@ -22,6 +23,7 @@ import retrofit2.Callback
 import retrofit2.Response
 import java.io.IOException
 
+
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,6 +31,8 @@ class MainActivity : AppCompatActivity() {
 
         FirebaseApp.initializeApp(this)
         PermissionUtils.requestPermission(this, PermissionUtils.locationPermissions)
+
+        val sharedPreference =  getSharedPreferences("lprfiscalcam",Context.MODE_PRIVATE)
 
         val activity: AppCompatActivity = this
         val textFieldLogin = findViewById<TextInputLayout>(R.id.textFieldLogin)
@@ -38,6 +42,8 @@ class MainActivity : AppCompatActivity() {
         val linearLayoutLogin = findViewById<LinearLayout>(R.id.linearLayoutLogin)
         val linearLayoutCamera = findViewById<LinearLayout>(R.id.linearLayoutCamera)
         val buttonLogin = findViewById<Button>(R.id.buttonLogin)
+        val buttonAcessar = findViewById<Button>(R.id.buttonAcessar)
+
         buttonLogin.setOnClickListener {
             val login = textFieldLogin.editText?.text.toString()
             val senhaLimpa = textFieldSenha.editText?.text.toString()
@@ -66,6 +72,11 @@ class MainActivity : AppCompatActivity() {
                                     ) {
                                         relativeLayoutLoading.visibility = View.GONE
                                         if (response.isSuccessful) {
+                                            val editor = sharedPreference.edit()
+                                            editor.putString("login", login)
+                                            editor.putString("senha", senhaLimpa)
+                                            editor.apply()
+
                                             textFieldLogin.editText!!.setText("")
                                             textFieldSenha.editText!!.setText("")
                                             Toast.makeText(
@@ -84,6 +95,24 @@ class MainActivity : AppCompatActivity() {
                                             linearLayoutLogin.visibility = View.GONE
                                             linearLayoutCamera.visibility = View.VISIBLE
                                             hideKeyboard(it)
+
+                                            if (sharedPreference.contains("fiscalizacao")) {
+                                                val fiscalizacaoId = sharedPreference.getLong("fiscalizacao", 0)
+                                                val items = retrieveAllItems(spinnerCamera)
+
+                                                var index: Int? = null
+                                                for(i in 0..items.size) {
+                                                 if (items[i].id == fiscalizacaoId) {
+                                                     index = i
+                                                     Log.d("Fiscalização", items[i].codigo!!)
+                                                     break
+                                                 }
+                                                }
+                                                if (index != null) {
+                                                    spinnerCamera.setSelection(index)
+                                                    buttonAcessar.performClick()
+                                                }
+                                            }
                                         } else {
                                             try {
                                                 Toast.makeText(
@@ -150,9 +179,9 @@ class MainActivity : AppCompatActivity() {
                     }
                 })
         }
-        val buttonAcessar = findViewById<Button>(R.id.buttonAcessar)
+
         buttonAcessar.setOnClickListener {
-            val sharedPreference =  getSharedPreferences("lprfiscalcam",Context.MODE_PRIVATE)
+            val editor = sharedPreference.edit()
             if (!sharedPreference.contains("chave")) {
                 val inputEditTextField = EditText(this)
                 val dialog = AlertDialog.Builder(this)
@@ -161,7 +190,6 @@ class MainActivity : AppCompatActivity() {
                     .setView(inputEditTextField)
                     .setPositiveButton("OK") { _, _ ->
                         val editTextInput = inputEditTextField .text.toString()
-                        val editor = sharedPreference.edit()
                         editor.putString("chave", editTextInput)
                         editor.apply()
                     }
@@ -174,6 +202,8 @@ class MainActivity : AppCompatActivity() {
 
             buttonAcessar.isEnabled = false
             val fiscalizacao = spinnerCamera.selectedItem as Fiscalizacao
+            editor.putLong("fiscalizacao", fiscalizacao.id)
+            editor.apply()
 
             val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
             if (usbManager.deviceList.isEmpty()) {
@@ -187,18 +217,36 @@ class MainActivity : AppCompatActivity() {
             }
 
             buttonAcessar.isEnabled = true
+            finish()
         }
+
         val buttonSair = findViewById<Button>(R.id.buttonSair)
         buttonSair.setOnClickListener {
             Utilities.cliente = null
             linearLayoutLogin.visibility = View.VISIBLE
             linearLayoutCamera.visibility = View.GONE
         }
+
+        if (sharedPreference.contains("login") && sharedPreference.contains("senha")) {
+            textFieldLogin.editText?.setText(sharedPreference.getString("login", ""))
+            textFieldSenha.editText?.setText(sharedPreference.getString("senha", ""))
+            buttonLogin.performClick()
+        }
+    }
+
+    fun retrieveAllItems(theSpinner: Spinner): MutableList<Fiscalizacao> {
+        val adapter: Adapter = theSpinner.adapter
+        val n = adapter.count
+        val items: MutableList<Fiscalizacao> = ArrayList(n)
+        for (i in 0 until n) {
+            val item = adapter.getItem(i) as Fiscalizacao
+            items.add(item)
+        }
+        return items
     }
 
     fun Context.hideKeyboard(view: View) {
         val inputMethodManager = getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
         inputMethodManager.hideSoftInputFromWindow(view.windowToken, 0)
-
     }
 }
