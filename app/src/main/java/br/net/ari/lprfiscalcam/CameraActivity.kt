@@ -82,6 +82,9 @@ class CameraActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
 
+        val sharedPreference = getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
+        val editor = sharedPreference.edit()
+
         val relativeLayoutMainContainer =
             findViewById<RelativeLayout>(R.id.relativeLayoutMainContainer)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -101,9 +104,9 @@ class CameraActivity : AppCompatActivity() {
         val seekBarZoom = findViewById<SeekBar>(R.id.seekBarZoom)
         val seekBarFoco = findViewById<SeekBar>(R.id.seekBarFoco)
 
-        val buttonExit = findViewById<Button>(R.id.buttonExit)
-        buttonExit.setOnClickListener {
-            buttonExit.isEnabled = false
+        val buttonClose = findViewById<Button>(R.id.buttonClose)
+        buttonClose.setOnClickListener {
+            buttonClose.isEnabled = false
             cameraProvider.unbindAll()
             Thread.sleep(100)
             imageAnalyzer.clearAnalyzer()
@@ -115,6 +118,39 @@ class CameraActivity : AppCompatActivity() {
             manager.shutdown()
             Thread.sleep(100)
             finish()
+        }
+
+        val buttonExit = findViewById<Button>(R.id.buttonExit)
+        buttonExit.setOnClickListener {
+            buttonExit.isEnabled = false
+            val builder = AlertDialog.Builder(this@CameraActivity)
+            builder.setMessage("Ao sair os dados de login, senha e operação serão limpos. Deseja continuar?")
+                .setCancelable(false)
+                .setPositiveButton("Sim") { _, _ ->
+                    cameraProvider.unbindAll()
+                    Thread.sleep(100)
+                    imageAnalyzer.clearAnalyzer()
+                    Thread.sleep(100)
+                    cameraExecutor.shutdown()
+                    Thread.sleep(100)
+                    manager.finalize()
+                    Thread.sleep(100)
+                    manager.shutdown()
+                    Thread.sleep(100)
+                    editor.remove("fiscalizacao")
+                    editor.remove("login")
+                    editor.remove("senha")
+                    editor.apply()
+                    val intent = Intent(this, MainActivity::class.java)
+                    startActivity(intent)
+                    finish()
+                }
+                .setNegativeButton("Não") { dialog, _ ->
+                    buttonExit.isEnabled = true
+                    dialog.dismiss()
+                }
+            val alert = builder.create()
+            alert.show()
         }
 
         PermissionUtils.requestPermission(this, PermissionUtils.cameraPermissions)
@@ -154,7 +190,6 @@ class CameraActivity : AppCompatActivity() {
 
             initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
             val c2v = VaxtorLicensingManager.getC2V()
-            val sharedPreference = getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
             if (initOcr < 0) {
                 if (c2v.isNotEmpty()) {
                     val ret = VaxtorLicensingManager.setC2V(c2v)
@@ -177,7 +212,6 @@ class CameraActivity : AppCompatActivity() {
                                             .setPositiveButton("OK") { _, _ ->
                                                 val editTextInput =
                                                     inputEditTextField.text.toString()
-                                                val editor = sharedPreference.edit()
                                                 editor.putString("chave", editTextInput)
                                                 editor.apply()
                                                 initOcr = manager.initOcr(
@@ -193,7 +227,6 @@ class CameraActivity : AppCompatActivity() {
                             }
                         }
                     } else {
-                        val editor = sharedPreference.edit()
                         editor.putString("c2v", c2v)
                         editor.apply()
                         initOcr =
@@ -201,7 +234,6 @@ class CameraActivity : AppCompatActivity() {
                     }
                 }
             } else if (!sharedPreference.contains("c2v")) {
-                val editor = sharedPreference.edit()
                 editor.putString("c2v", c2v)
                 editor.apply()
             }
@@ -279,7 +311,6 @@ class CameraActivity : AppCompatActivity() {
                     ) {
                         val zoom = progress / 100.toFloat()
                         cameraControl.setLinearZoom(zoom)
-                        val editor = sharedPreference.edit()
                         editor.putInt("zoom", progress)
                         editor.apply()
                     }
@@ -310,7 +341,6 @@ class CameraActivity : AppCompatActivity() {
                                 )
                                 .build()
                             camera2CameraControl.captureRequestOptions = captureRequestOptions
-                            val editor = sharedPreference.edit()
                             editor.putInt("foco", progress)
                             editor.apply()
                         }

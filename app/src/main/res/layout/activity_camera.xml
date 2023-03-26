@@ -92,6 +92,16 @@
                     android:layout_height="wrap_content"/>
 
                 <Button
+                    android:id="@+id/buttonClose"
+                    android:background="@drawable/roundedbutton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:text="@string/fechar"
+                    android:contentDescription="@string/app_name"
+                    android:layout_margin="8dp" />
+
+                <Button
                     android:id="@+id/buttonExit"
                     android:background="@drawable/roundedbutton"
                     android:layout_width="wrap_content"
