@@ -114,7 +114,7 @@ object Utilities {
     fun getScaledImage(bitmapImage: Bitmap, newWidth: Int, newHeight: Int): ByteArray? {
         val mutableBitmapImage = Bitmap.createScaledBitmap(bitmapImage, newWidth, newHeight, false)
         val outputStream = ByteArrayOutputStream()
-        mutableBitmapImage.compress(Bitmap.CompressFormat.PNG, 0, outputStream)
+        mutableBitmapImage.compress(Bitmap.CompressFormat.JPEG, 0, outputStream)
         if (mutableBitmapImage != bitmapImage) {
             mutableBitmapImage.recycle()
         }
