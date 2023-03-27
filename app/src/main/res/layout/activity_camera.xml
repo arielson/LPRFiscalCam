@@ -103,9 +103,11 @@
 
                 <Button
                     android:id="@+id/buttonExit"
-                    android:background="@drawable/roundedbutton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:textColor="@color/white"
+                    android:textSize="12sp"
+                    android:background="@drawable/roundedbutton_red"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
                     android:layout_gravity="end"
                     android:text="@string/sair"
                     android:contentDescription="@string/app_name"

@@ -28,9 +28,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import br.net.ari.lprfiscalcam.core.PermissionUtils
-import br.net.ari.lprfiscalcam.core.Utilities
-import br.net.ari.lprfiscalcam.core.YuvImageAnalyzer
+import br.net.ari.lprfiscalcam.core.*
 import br.net.ari.lprfiscalcam.data.ImageInfoPOJO
 import br.net.ari.lprfiscalcam.data.ImagePOJO
 import br.net.ari.lprfiscalcam.enums.ImageFormat
@@ -77,7 +75,7 @@ class CameraActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
-    @SuppressLint("RestrictedApi", "UnsafeOptInUsageError")
+    @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
@@ -173,19 +171,19 @@ class CameraActivity : AppCompatActivity() {
                 oper_mode = OperMode.ASYNC.code,
                 list_countries_codes = countries,
                 list_num_countries = countries.size,
-                ocr_complexity = 2,
-                grammar_strict = 1,
-                min_global_confidence = 80,
-                min_character_confidence = 70,
-                same_plate_delay = 20,
-                same_plate_max_chars_distance = 1,
-                max_slop_angle = 30,
-                background_mode = 1,
-                min_num_plate_characters = 7,
-                max_num_plate_characters = 7,
-                min_char_height = 18,
-                max_char_height = 42,
-                detect_multiline_plate = 1
+                ocr_complexity = Constants.OCRComplexity,
+                grammar_strict = Constants.GrammarStrict,
+                min_global_confidence = Constants.MinGlobalConfidence,
+                min_character_confidence = Constants.MinCharacterConfidence,
+                same_plate_delay = Constants.SamePlateDelay,
+                same_plate_max_chars_distance = Constants.SamePlateMaxCharsDistance,
+                max_slop_angle = Constants.MaxSlopAngle,
+                background_mode = Constants.BackgroundMode,
+                min_num_plate_characters = Constants.MinNumPlateCharacters,
+                max_num_plate_characters = Constants.MaxNumPlateCharacters,
+                min_char_height = Constants.MinCharHeight,
+                max_char_height = Constants.MaxCharHeight,
+                detect_multiline_plate = Constants.DetectMultilinePlate
             )
 
             initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
