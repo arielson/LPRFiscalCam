@@ -416,11 +416,15 @@ class CameraActivity : AppCompatActivity() {
 
                                         var veiculoBitmap =
                                             Utilities.bitmapFromImagePojo(imagePOJO!!)!!
-                                        val veiculoImage =
-                                            Utilities.getScaledImage(veiculoBitmap, 640, 480)
-                                        val veiculoImageBase64 =
-                                            Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
-                                        veiculo.foto2 = veiculoImageBase64
+
+                                        if (veiculo.pendencia == "Roubo_e_Furto") {
+                                            val veiculoImage =
+                                                Utilities.getScaledImage(veiculoBitmap, 640, 480)
+                                            val veiculoImageBase64 =
+                                                Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
+                                            veiculo.foto2 = veiculoImageBase64
+                                        }
+
                                         val plateBox = it._plate_info?._plate_bounding_box!!
                                         val plateRect =
                                             Rect(plateBox[0], plateBox[1], plateBox[2], plateBox[3])
@@ -431,7 +435,7 @@ class CameraActivity : AppCompatActivity() {
                                         )
                                         val byteArrayOutputStream = ByteArrayOutputStream()
                                         plateBitamap.compress(
-                                            Bitmap.CompressFormat.PNG,
+                                            Bitmap.CompressFormat.JPEG,
                                             100,
                                             byteArrayOutputStream
                                         )
