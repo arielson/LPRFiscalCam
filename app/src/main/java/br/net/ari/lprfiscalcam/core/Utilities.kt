@@ -24,8 +24,8 @@ import java.util.concurrent.TimeUnit
 
 object Utilities {
     private const val Host = "lprfiscalapi.ari.net.br"
+//    private const val Host = "lprfiscalapihomol.ari.net.br"
 
-    //    private final static String Host = "8ad6-191-136-213-194.ngrok.io";
     private const val ServiceUrl = "https://$Host/api/v1/"
     private var service: APIService? = null
     private val interceptor = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
