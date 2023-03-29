@@ -1,10 +1,7 @@
 package br.net.ari.lprfiscalcam
 
 import android.annotation.SuppressLint
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.hardware.camera2.*
@@ -32,6 +29,7 @@ import br.net.ari.lprfiscalcam.core.*
 import br.net.ari.lprfiscalcam.data.ImageInfoPOJO
 import br.net.ari.lprfiscalcam.data.ImagePOJO
 import br.net.ari.lprfiscalcam.enums.ImageFormat
+import br.net.ari.lprfiscalcam.models.Camera
 import br.net.ari.lprfiscalcam.models.Fiscalizacao
 import br.net.ari.lprfiscalcam.models.Veiculo
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -188,52 +186,8 @@ class CameraActivity : AppCompatActivity() {
 
             initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
             val c2v = VaxtorLicensingManager.getC2V()
-            if (initOcr < 0) {
-                if (c2v.isNotEmpty()) {
-                    val ret = VaxtorLicensingManager.setC2V(c2v)
-                    if (ret < -1) {
-                        if (!sharedPreference.contains("chave")) {
-                            val chave = sharedPreference.getString("chave", "")
-                            if (chave != null && chave.isNotEmpty()) {
-                                VaxtorLicensingManager.registerLicense(chave) { bool, _ ->
-                                    if (bool) {
-                                        initOcr = manager.initOcr(
-                                            ocrInitialiseArgs,
-                                            FirebaseCrashlytics.getInstance()
-                                        )
-                                    } else {
-                                        val inputEditTextField = EditText(this)
-                                        val dialog = AlertDialog.Builder(this)
-                                            .setTitle("Chave")
-                                            .setMessage("Chave inválida! Por favor digite a chave")
-                                            .setView(inputEditTextField)
-                                            .setPositiveButton("OK") { _, _ ->
-                                                val editTextInput =
-                                                    inputEditTextField.text.toString()
-                                                editor.putString("chave", editTextInput)
-                                                editor.apply()
-                                                initOcr = manager.initOcr(
-                                                    ocrInitialiseArgs,
-                                                    FirebaseCrashlytics.getInstance()
-                                                )
-                                            }
-                                            .setNegativeButton("Cancelar", null)
-                                            .create()
-                                        dialog.show()
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        editor.putString("c2v", c2v)
-                        editor.apply()
-                        initOcr =
-                            manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
-                    }
-                }
-            } else if (!sharedPreference.contains("c2v")) {
-                editor.putString("c2v", c2v)
-                editor.apply()
+            if (!sharedPreference.contains("c2v")) {
+                saveData(sharedPreference, editor, c2v)
             }
 
             val cameraProviderFuture = ProcessCameraProvider.getInstance(this.applicationContext)
@@ -386,7 +340,8 @@ class CameraActivity : AppCompatActivity() {
                 val plate = it._plate_info?._plate_number_asciivar
                 Log.d("Placa:", "$plate")
 
-                Utilities.service().GetVeiculo(plate, fiscalizacao.id)
+                //, Utilities.getDeviceName(), sharedPreference.getLong("camera", 0)
+                Utilities.service().getVeiculo(plate, fiscalizacao.id)
                     .enqueue(object : Callback<Veiculo?> {
                         override fun onResponse(
                             call: Call<Veiculo?>,
@@ -445,7 +400,7 @@ class CameraActivity : AppCompatActivity() {
                                             Base64.encodeToString(byteArray, Base64.NO_WRAP)
                                         veiculo.foto1 = plateImageBase64
                                     }
-                                    Utilities.service().PostVeiculo(veiculo)
+                                    Utilities.service().postVeiculo(veiculo)
                                         .enqueue(object : Callback<String?> {
                                             override fun onResponse(
                                                 call: Call<String?>,
@@ -491,12 +446,49 @@ class CameraActivity : AppCompatActivity() {
 
                         override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
                             t.printStackTrace()
+                            Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG).show()
                         }
                     })
             }
         } catch (e: IOException) {
             throw RuntimeException(e)
         }
+    }
+
+    private fun saveData(sharedPreference: SharedPreferences, editor: SharedPreferences.Editor, c2v: String) {
+        val camera = Camera()
+        camera.id = sharedPreference.getLong("camera", 0)
+        camera.c2v = c2v
+        camera.uuid = Utilities.getDeviceName()
+        Utilities.service().patchC2VByChave(camera)
+            .enqueue(object : Callback<Camera?> {
+                override fun onResponse(
+                    call: Call<Camera?>,
+                    response: Response<Camera?>
+                ) {
+                    if (!response.isSuccessful) {
+                        Toast.makeText(
+                            applicationContext, Utilities.analiseException(
+                                response.code(), response.raw().toString(),
+                                if (response.errorBody() != null) response.errorBody()!!
+                                    .string() else null,
+                                applicationContext
+                            ), Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        editor.putString("c2v", c2v)
+                        editor.apply()
+                    }
+                }
+
+                override fun onFailure(
+                    call: Call<Camera?>,
+                    t: Throwable
+                ) {
+                    t.printStackTrace()
+                    Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG).show()
+                }
+            })
     }
 
     private fun onYuvImage(image: ImagePOJO) {

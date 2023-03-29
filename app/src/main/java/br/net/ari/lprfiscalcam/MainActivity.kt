@@ -14,10 +14,12 @@ import androidx.appcompat.app.AppCompatActivity
 import br.net.ari.lprfiscalcam.adapters.FiscalizacaoAdapter
 import br.net.ari.lprfiscalcam.core.PermissionUtils
 import br.net.ari.lprfiscalcam.core.Utilities
+import br.net.ari.lprfiscalcam.models.Camera
 import br.net.ari.lprfiscalcam.models.Cliente
 import br.net.ari.lprfiscalcam.models.Fiscalizacao
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.FirebaseApp
+import com.vaxtor.alprlib.VaxtorLicensingManager
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -59,12 +61,12 @@ class MainActivity : AppCompatActivity() {
             }
             val senha = Utilities.sha256(senhaLimpa)
             relativeLayoutLoading.visibility = View.VISIBLE
-            Utilities.service().GetClienteByLoginAndSenha(login, senha)
+            Utilities.service().getClienteByLoginAndSenha(login, senha)
                 .enqueue(object : Callback<Cliente?> {
                     override fun onResponse(call: Call<Cliente?>, response: Response<Cliente?>) {
                         if (response.isSuccessful) {
                             Utilities.cliente = response.body()
-                            Utilities.service().GetFiscalizacoes()
+                            Utilities.service().getFiscalizacoes()
                                 .enqueue(object : Callback<List<Fiscalizacao>?> {
                                     override fun onResponse(
                                         call: Call<List<Fiscalizacao>?>,
@@ -189,9 +191,66 @@ class MainActivity : AppCompatActivity() {
                     .setMessage("Por favor digite a chave")
                     .setView(inputEditTextField)
                     .setPositiveButton("OK") { _, _ ->
+                        relativeLayoutLoading.visibility = View.VISIBLE
                         val editTextInput = inputEditTextField .text.toString()
-                        editor.putString("chave", editTextInput)
-                        editor.apply()
+                        Utilities.service().getCameraByChave(editTextInput).enqueue(object : Callback<Camera?> {
+                            override fun onResponse(
+                                call: Call<Camera?>,
+                                response: Response<Camera?>
+                            ) {
+                                if (response.isSuccessful && response.body() != null) {
+                                    val camera = response.body()!!
+                                    editor.putLong("camera", camera.id)
+                                    editor.apply()
+                                    if (camera.c2v != null) {
+                                        val dialog = AlertDialog.Builder(this@MainActivity)
+                                            .setTitle("Chave")
+                                            .setMessage("Essa câmera já foi ativada. Deseja reativar?\n\nEssa operação só será permitida no dispositivo que foi ativado.")
+                                            .setView(inputEditTextField)
+                                            .setPositiveButton("OK") { _, _ ->
+                                                val ret = VaxtorLicensingManager.setC2V(camera.c2v!!)
+                                                if (ret == 1L) {
+                                                    Toast.makeText(applicationContext, "Erro ao efetuar ativação. Entre contato com o suporte.", Toast.LENGTH_LONG).show()
+                                                } else {
+                                                    editor.putString("c2v", camera.c2v)
+                                                    editor.apply()
+                                                }
+                                                relativeLayoutLoading.visibility = View.GONE
+                                            }
+                                            .setNegativeButton("Cancelar", null)
+                                            .create()
+                                        dialog.show()
+                                    } else {
+                                        VaxtorLicensingManager.registerLicense(camera.chaveVaxtor!!) { bool, error ->
+                                            if (bool) {
+                                                editor.putString("chave", camera.chaveVaxtor)
+                                                editor.apply()
+                                                buttonAcessar.performClick()
+                                            } else {
+                                                Toast.makeText(applicationContext, error, Toast.LENGTH_LONG).show()
+                                            }
+                                            relativeLayoutLoading.visibility = View.GONE
+                                        }
+                                    }
+                                } else {
+                                    Toast.makeText(
+                                        applicationContext, Utilities.analiseException(
+                                            response.code(), response.raw().toString(),
+                                            if (response.errorBody() != null) response.errorBody()!!
+                                                .string() else null,
+                                            applicationContext
+                                        ), Toast.LENGTH_LONG
+                                    ).show()
+                                    relativeLayoutLoading.visibility = View.GONE
+                                }
+                            }
+
+                            override fun onFailure(call: Call<Camera?>, t: Throwable) {
+                                t.printStackTrace()
+                                relativeLayoutLoading.visibility = View.GONE
+                                Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG).show()
+                            }
+                        })
                     }
                     .setNegativeButton("Cancelar", null)
                     .create()

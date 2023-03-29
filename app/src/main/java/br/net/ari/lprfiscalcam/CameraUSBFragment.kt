@@ -176,8 +176,8 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack  {
             manager!!.eventPlateInfoCallback = { it ->
                 val plate = it._plate_info?._plate_number_asciivar
                 Log.d("Placa:", "$plate")
-
-                Utilities.service().GetVeiculo(plate, CameraActivity.fiscalizacao.id)
+//                val sharedPreference = requireContext().getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
+                Utilities.service().getVeiculo(plate, CameraActivity.fiscalizacao.id)
                     .enqueue(object : Callback<Veiculo?> {
                         override fun onResponse(
                             call: Call<Veiculo?>,
@@ -219,7 +219,7 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack  {
                                         val plateImageBase64 = Base64.encodeToString(byteArray, Base64.NO_WRAP)
                                         veiculo.foto1 = plateImageBase64
                                     }
-                                    Utilities.service().PostVeiculo(veiculo)
+                                    Utilities.service().postVeiculo(veiculo)
                                         .enqueue(object : Callback<String?> {
                                             override fun onResponse(
                                                 call: Call<String?>,
