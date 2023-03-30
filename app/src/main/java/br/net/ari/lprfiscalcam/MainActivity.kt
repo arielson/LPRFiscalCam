@@ -3,6 +3,7 @@ package br.net.ari.lprfiscalcam
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences.Editor
 import android.hardware.usb.UsbManager
 import android.os.Bundle
 import android.text.InputFilter
@@ -13,23 +14,34 @@ import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import br.net.ari.lprfiscalcam.adapters.FiscalizacaoAdapter
+import br.net.ari.lprfiscalcam.core.Constants
 import br.net.ari.lprfiscalcam.core.PermissionUtils
 import br.net.ari.lprfiscalcam.core.Utilities
 import br.net.ari.lprfiscalcam.models.Camera
+import br.net.ari.lprfiscalcam.models.CameraLog
 import br.net.ari.lprfiscalcam.models.Cliente
 import br.net.ari.lprfiscalcam.models.Fiscalizacao
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.FirebaseApp
+import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.vaxtor.alprlib.AlprOcr
+import com.vaxtor.alprlib.VaxtorAlprManager
 import com.vaxtor.alprlib.VaxtorLicensingManager
+import com.vaxtor.alprlib.arguments.OcrInitialiseArgs
+import com.vaxtor.alprlib.enums.OperMode
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.util.*
 import kotlin.collections.ArrayList
 
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var manager: VaxtorAlprManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -37,7 +49,37 @@ class MainActivity : AppCompatActivity() {
         FirebaseApp.initializeApp(this)
         PermissionUtils.requestPermission(this, PermissionUtils.locationPermissions)
 
-        val sharedPreference =  getSharedPreferences("lprfiscalcam",Context.MODE_PRIVATE)
+        val sharedPreference = getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
+        val editor = sharedPreference.edit()
+
+        val ocrFile = File(cacheDir, "ocr_data.bin")
+        if (!ocrFile.exists()) {
+            ocrFile.createNewFile()
+            val openRawResource = resources.openRawResource(com.vaxtor.alprlib.R.raw.ocr_data)
+            val fileOutputStream = FileOutputStream(ocrFile)
+            openRawResource.copyTo(fileOutputStream)
+        }
+        manager = VaxtorAlprManager(ocrFile.absolutePath)
+        val countries = longArrayOf(AlprOcr.ocrGetWorldCountryStateCode("Brazil"))
+        val ocrInitialiseArgs = OcrInitialiseArgs(
+            oper_mode = OperMode.ASYNC.code,
+            list_countries_codes = countries,
+            list_num_countries = countries.size,
+            ocr_complexity = Constants.OCRComplexity,
+            grammar_strict = Constants.GrammarStrict,
+            min_global_confidence = Constants.MinGlobalConfidence,
+            min_character_confidence = Constants.MinCharacterConfidence,
+            same_plate_delay = Constants.SamePlateDelay,
+            same_plate_max_chars_distance = Constants.SamePlateMaxCharsDistance,
+            max_slop_angle = Constants.MaxSlopAngle,
+            background_mode = Constants.BackgroundMode,
+            min_num_plate_characters = Constants.MinNumPlateCharacters,
+            max_num_plate_characters = Constants.MaxNumPlateCharacters,
+            min_char_height = Constants.MinCharHeight,
+            max_char_height = Constants.MaxCharHeight,
+            detect_multiline_plate = Constants.DetectMultilinePlate
+        )
+
 
         val activity: AppCompatActivity = this
         val textFieldLogin = findViewById<TextInputLayout>(R.id.textFieldLogin)
@@ -77,7 +119,7 @@ class MainActivity : AppCompatActivity() {
                                     ) {
                                         relativeLayoutLoading.visibility = View.GONE
                                         if (response.isSuccessful) {
-                                            val editor = sharedPreference.edit()
+
                                             editor.putString("login", login)
                                             editor.putString("senha", senhaLimpa)
                                             editor.apply()
@@ -89,7 +131,8 @@ class MainActivity : AppCompatActivity() {
                                                 "Bem vindo(a) " + Utilities.cliente?.nome,
                                                 Toast.LENGTH_LONG
                                             ).show()
-                                            val fiscalizacoes = response.body() as List<Fiscalizacao>
+                                            val fiscalizacoes =
+                                                response.body() as List<Fiscalizacao>
                                             val adapter: ArrayAdapter<Fiscalizacao> =
                                                 FiscalizacaoAdapter(
                                                     activity,
@@ -102,16 +145,17 @@ class MainActivity : AppCompatActivity() {
                                             hideKeyboard(it)
 
                                             if (sharedPreference.contains("fiscalizacao")) {
-                                                val fiscalizacaoId = sharedPreference.getLong("fiscalizacao", 0)
+                                                val fiscalizacaoId =
+                                                    sharedPreference.getLong("fiscalizacao", 0)
                                                 val items = retrieveAllItems(spinnerCamera)
 
                                                 var index: Int? = null
-                                                for(i in 0 until items.size) {
-                                                 if (items[i].id == fiscalizacaoId) {
-                                                     index = i
-                                                     Log.d("Fiscalização", items[i].codigo!!)
-                                                     break
-                                                 }
+                                                for (i in 0 until items.size) {
+                                                    if (items[i].id == fiscalizacaoId) {
+                                                        index = i
+                                                        Log.d("Fiscalização", items[i].codigo!!)
+                                                        break
+                                                    }
                                                 }
                                                 if (index != null) {
                                                     spinnerCamera.setSelection(index)
@@ -186,89 +230,141 @@ class MainActivity : AppCompatActivity() {
         }
 
         buttonAcessar.setOnClickListener {
-            val editor = sharedPreference.edit()
             if (!sharedPreference.contains("chave")) {
                 val inputEditTextField = EditText(this)
-                inputEditTextField.filters = arrayOf(InputFilter.LengthFilter(6), InputFilter.AllCaps())
-                val dialog = AlertDialog.Builder(this)
+                inputEditTextField.filters =
+                    arrayOf(InputFilter.LengthFilter(6), InputFilter.AllCaps())
+                val dialog = AlertDialog.Builder(this@MainActivity)
                     .setTitle("Chave")
                     .setMessage("Por favor digite a chave")
                     .setView(inputEditTextField)
                     .setPositiveButton("OK") { _, _ ->
                         relativeLayoutLoading.visibility = View.VISIBLE
-                        val editTextInput = inputEditTextField .text.toString()
-                        Utilities.service().getCameraByChave(editTextInput.uppercase(Locale.ROOT)).enqueue(object : Callback<Camera?> {
-                            override fun onResponse(
-                                call: Call<Camera?>,
-                                response: Response<Camera?>
-                            ) {
-                                if (response.isSuccessful && response.body() != null) {
-                                    val camera = response.body()!!
-                                    VaxtorLicensingManager.registerLicense(camera.chaveVaxtor!!) { bool, error ->
-                                        if (bool) {
-                                            val c2V = VaxtorLicensingManager.getC2V()
-                                            val cameraInput = Camera()
-                                            cameraInput.id = camera.id
-                                            cameraInput.c2V = c2V
-                                            cameraInput.uuid = Utilities.getDeviceName()
-                                            Utilities.service().patchC2VByChave(cameraInput)
-                                                .enqueue(object : Callback<Camera?> {
-                                                    override fun onResponse(
-                                                        call: Call<Camera?>,
-                                                        response: Response<Camera?>
-                                                    ) {
-                                                        if (!response.isSuccessful) {
-                                                            Toast.makeText(
-                                                                applicationContext, Utilities.analiseException(
-                                                                    response.code(), response.raw().toString(),
-                                                                    if (response.errorBody() != null) response.errorBody()!!
-                                                                        .string() else null,
-                                                                    applicationContext
-                                                                ), Toast.LENGTH_LONG
-                                                            ).show()
-                                                        } else {
-                                                            editor.putString("chave", camera.chaveVaxtor)
-                                                            editor.putLong("camera", camera.id)
-                                                            editor.apply()
+                        val chave = inputEditTextField.text.toString()
+                        Utilities.service().getCameraByChave(chave.uppercase(Locale.ROOT))
+                            .enqueue(object : Callback<Camera?> {
+                                override fun onResponse(
+                                    call: Call<Camera?>,
+                                    response: Response<Camera?>
+                                ) {
+                                    if (response.isSuccessful && response.body() != null) {
+                                        val camera = response.body()!!
+                                        VaxtorLicensingManager.registerLicense(camera.chaveVaxtor!!) { bool, error ->
+                                            if (bool) {
+                                                sendData(
+                                                    camera,
+                                                    editor,
+                                                    buttonAcessar,
+                                                    relativeLayoutLoading
+                                                )
+                                            } else {
+                                                val initOcr = manager.initOcr(
+                                                    ocrInitialiseArgs,
+                                                    FirebaseCrashlytics.getInstance()
+                                                )
+                                                if (initOcr < 1) {
+                                                    val cameraLog = CameraLog()
+                                                    cameraLog.cameraId = camera.id
+                                                    cameraLog.dispositivo =
+                                                        Utilities.getDeviceName()
+                                                    cameraLog.texto =
+                                                        "Chave: $chave <br> Chave Vaxtor: ${camera.chaveVaxtor!!} <br> Erro initOcr: $initOcr <br> Erro: $error"
+                                                    val dialogErro =
+                                                        AlertDialog.Builder(this@MainActivity)
+                                                            .setTitle("Chave")
+                                                            .setMessage("Não foi possível validar a chave. Deseja enviar log para o suporte?")
+                                                            .setPositiveButton("Sim") { _, _ ->
+                                                                Utilities.service()
+                                                                    .setLog(cameraLog)
+                                                                    .enqueue(object :
+                                                                        Callback<Void?> {
+                                                                        override fun onResponse(
+                                                                            call: Call<Void?>,
+                                                                            response: Response<Void?>
+                                                                        ) {
+                                                                            if (response.isSuccessful) {
+                                                                                Toast.makeText(
+                                                                                    applicationContext,
+                                                                                    "Log enviado com sucesso. Suporte irá verificar o problema.",
+                                                                                    Toast.LENGTH_LONG
+                                                                                ).show()
+                                                                            } else {
+                                                                                Toast.makeText(
+                                                                                    applicationContext,
+                                                                                    Utilities.analiseException(
+                                                                                        response.code(),
+                                                                                        response.raw()
+                                                                                            .toString(),
+                                                                                        if (response.errorBody() != null) response.errorBody()!!
+                                                                                            .string() else null,
+                                                                                        applicationContext
+                                                                                    ),
+                                                                                    Toast.LENGTH_LONG
+                                                                                ).show()
+                                                                            }
+                                                                            relativeLayoutLoading.visibility =
+                                                                                View.GONE
+                                                                        }
 
-                                                            buttonAcessar.performClick()
-                                                        }
-                                                        relativeLayoutLoading.visibility = View.GONE
-                                                    }
+                                                                        override fun onFailure(
+                                                                            call: Call<Void?>,
+                                                                            t: Throwable
+                                                                        ) {
+                                                                            relativeLayoutLoading.visibility =
+                                                                                View.GONE
+                                                                            t.printStackTrace()
+                                                                            Toast.makeText(
+                                                                                applicationContext,
+                                                                                R.string.service_failure,
+                                                                                Toast.LENGTH_LONG
+                                                                            ).show()
+                                                                        }
+                                                                    })
+                                                            }
+                                                            .setNegativeButton("Não") { _, _ ->
+                                                                Toast.makeText(
+                                                                    applicationContext,
+                                                                    "ERRO: $error",
+                                                                    Toast.LENGTH_LONG
+                                                                ).show()
+                                                            }
+                                                            .create()
+                                                    dialogErro.show()
 
-                                                    override fun onFailure(
-                                                        call: Call<Camera?>,
-                                                        t: Throwable
-                                                    ) {
-                                                        relativeLayoutLoading.visibility = View.GONE
-                                                        t.printStackTrace()
-                                                        Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG).show()
-                                                    }
-                                                })
-                                        } else {
-                                            Toast.makeText(applicationContext, error, Toast.LENGTH_LONG).show()
-                                            relativeLayoutLoading.visibility = View.GONE
+                                                    relativeLayoutLoading.visibility = View.GONE
+                                                } else {
+                                                    sendData(
+                                                        camera,
+                                                        editor,
+                                                        buttonAcessar,
+                                                        relativeLayoutLoading
+                                                    )
+                                                }
+                                            }
                                         }
+                                    } else {
+                                        Toast.makeText(
+                                            applicationContext, Utilities.analiseException(
+                                                response.code(), response.raw().toString(),
+                                                if (response.errorBody() != null) response.errorBody()!!
+                                                    .string() else null,
+                                                applicationContext
+                                            ), Toast.LENGTH_LONG
+                                        ).show()
+                                        relativeLayoutLoading.visibility = View.GONE
                                     }
-                                } else {
-                                    Toast.makeText(
-                                        applicationContext, Utilities.analiseException(
-                                            response.code(), response.raw().toString(),
-                                            if (response.errorBody() != null) response.errorBody()!!
-                                                .string() else null,
-                                            applicationContext
-                                        ), Toast.LENGTH_LONG
-                                    ).show()
-                                    relativeLayoutLoading.visibility = View.GONE
                                 }
-                            }
 
-                            override fun onFailure(call: Call<Camera?>, t: Throwable) {
-                                t.printStackTrace()
-                                relativeLayoutLoading.visibility = View.GONE
-                                Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG).show()
-                            }
-                        })
+                                override fun onFailure(call: Call<Camera?>, t: Throwable) {
+                                    t.printStackTrace()
+                                    relativeLayoutLoading.visibility = View.GONE
+                                    Toast.makeText(
+                                        applicationContext,
+                                        R.string.service_failure,
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            })
                     }
                     .setNegativeButton("Cancelar", null)
                     .create()
@@ -277,71 +373,80 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             } else if (!sharedPreference.contains("camera")) {
                 relativeLayoutLoading.visibility = View.VISIBLE
-                Utilities.service().getCameraByChaveVaxtor(sharedPreference.getString("chave", "")).enqueue(object : Callback<Camera?> {
-                    override fun onResponse(
-                        call: Call<Camera?>,
-                        response: Response<Camera?>
-                    ) {
-                        if (response.isSuccessful && response.body() != null) {
-                            val camera = response.body()!!
-                            val c2V = VaxtorLicensingManager.getC2V()
+                Utilities.service().getCameraByChaveVaxtor(sharedPreference.getString("chave", ""))
+                    .enqueue(object : Callback<Camera?> {
+                        override fun onResponse(
+                            call: Call<Camera?>,
+                            response: Response<Camera?>
+                        ) {
+                            if (response.isSuccessful && response.body() != null) {
+                                val camera = response.body()!!
+                                val c2V = VaxtorLicensingManager.getC2V()
 
-                            val cameraInput = Camera()
-                            cameraInput.id = camera.id
-                            cameraInput.c2V = c2V
-                            cameraInput.uuid = Utilities.getDeviceName()
-                            Utilities.service().patchC2VByChave(cameraInput)
-                                .enqueue(object : Callback<Camera?> {
-                                    override fun onResponse(
-                                        call: Call<Camera?>,
-                                        response: Response<Camera?>
-                                    ) {
-                                        if (!response.isSuccessful) {
-                                            Toast.makeText(
-                                                applicationContext, Utilities.analiseException(
-                                                    response.code(), response.raw().toString(),
-                                                    if (response.errorBody() != null) response.errorBody()!!
-                                                        .string() else null,
-                                                    applicationContext
-                                                ), Toast.LENGTH_LONG
-                                            ).show()
-                                        } else {
-                                            editor.putLong("camera", camera.id)
-                                            editor.apply()
+                                val cameraInput = Camera()
+                                cameraInput.id = camera.id
+                                cameraInput.c2V = c2V
+                                cameraInput.uuid = Utilities.getDeviceName()
+                                Utilities.service().patchC2VByChave(cameraInput)
+                                    .enqueue(object : Callback<Camera?> {
+                                        override fun onResponse(
+                                            call: Call<Camera?>,
+                                            response: Response<Camera?>
+                                        ) {
+                                            if (!response.isSuccessful) {
+                                                Toast.makeText(
+                                                    applicationContext, Utilities.analiseException(
+                                                        response.code(), response.raw().toString(),
+                                                        if (response.errorBody() != null) response.errorBody()!!
+                                                            .string() else null,
+                                                        applicationContext
+                                                    ), Toast.LENGTH_LONG
+                                                ).show()
+                                            } else {
+                                                editor.putLong("camera", camera.id)
+                                                editor.apply()
 
-                                            buttonAcessar.performClick()
+                                                buttonAcessar.performClick()
+                                            }
+                                            relativeLayoutLoading.visibility = View.GONE
                                         }
-                                        relativeLayoutLoading.visibility = View.GONE
-                                    }
 
-                                    override fun onFailure(
-                                        call: Call<Camera?>,
-                                        t: Throwable
-                                    ) {
-                                        relativeLayoutLoading.visibility = View.GONE
-                                        t.printStackTrace()
-                                        Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG).show()
-                                    }
-                                })
-                        } else {
+                                        override fun onFailure(
+                                            call: Call<Camera?>,
+                                            t: Throwable
+                                        ) {
+                                            relativeLayoutLoading.visibility = View.GONE
+                                            t.printStackTrace()
+                                            Toast.makeText(
+                                                applicationContext,
+                                                R.string.service_failure,
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    })
+                            } else {
+                                Toast.makeText(
+                                    applicationContext, Utilities.analiseException(
+                                        response.code(), response.raw().toString(),
+                                        if (response.errorBody() != null) response.errorBody()!!
+                                            .string() else null,
+                                        applicationContext
+                                    ), Toast.LENGTH_LONG
+                                ).show()
+                            }
+                            relativeLayoutLoading.visibility = View.GONE
+                        }
+
+                        override fun onFailure(call: Call<Camera?>, t: Throwable) {
+                            t.printStackTrace()
+                            relativeLayoutLoading.visibility = View.GONE
                             Toast.makeText(
-                                applicationContext, Utilities.analiseException(
-                                    response.code(), response.raw().toString(),
-                                    if (response.errorBody() != null) response.errorBody()!!
-                                        .string() else null,
-                                    applicationContext
-                                ), Toast.LENGTH_LONG
+                                applicationContext,
+                                R.string.service_failure,
+                                Toast.LENGTH_LONG
                             ).show()
                         }
-                        relativeLayoutLoading.visibility = View.GONE
-                    }
-
-                    override fun onFailure(call: Call<Camera?>, t: Throwable) {
-                        t.printStackTrace()
-                        relativeLayoutLoading.visibility = View.GONE
-                        Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG).show()
-                    }
-                })
+                    })
             } else {
                 buttonAcessar.isEnabled = false
                 val fiscalizacao = spinnerCamera.selectedItem as Fiscalizacao
@@ -378,6 +483,54 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun sendData(
+        camera: Camera,
+        editor: Editor,
+        buttonAcessar: Button,
+        relativeLayoutLoading: RelativeLayout
+    ) {
+        val c2V = VaxtorLicensingManager.getC2V()
+        val cameraInput = Camera()
+        cameraInput.id = camera.id
+        cameraInput.c2V = c2V
+        cameraInput.uuid = Utilities.getDeviceName()
+        Utilities.service().patchC2VByChave(cameraInput)
+            .enqueue(object : Callback<Camera?> {
+                override fun onResponse(
+                    call: Call<Camera?>,
+                    response: Response<Camera?>
+                ) {
+                    if (!response.isSuccessful) {
+                        Toast.makeText(
+                            applicationContext, Utilities.analiseException(
+                                response.code(), response.raw().toString(),
+                                if (response.errorBody() != null) response.errorBody()!!
+                                    .string() else null,
+                                applicationContext
+                            ), Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        editor.putString("chave", camera.chaveVaxtor)
+                        editor.putLong("camera", camera.id)
+                        editor.apply()
+
+                        buttonAcessar.performClick()
+                    }
+                    relativeLayoutLoading.visibility = View.GONE
+                }
+
+                override fun onFailure(
+                    call: Call<Camera?>,
+                    t: Throwable
+                ) {
+                    relativeLayoutLoading.visibility = View.GONE
+                    t.printStackTrace()
+                    Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG)
+                        .show()
+                }
+            })
+    }
+
     fun retrieveAllItems(theSpinner: Spinner): MutableList<Fiscalizacao> {
         val adapter: Adapter = theSpinner.adapter
         val n = adapter.count
@@ -390,7 +543,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun Context.hideKeyboard(view: View) {
-        val inputMethodManager = getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
+        val inputMethodManager =
+            getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
         inputMethodManager.hideSoftInputFromWindow(view.windowToken, 0)
     }
 }

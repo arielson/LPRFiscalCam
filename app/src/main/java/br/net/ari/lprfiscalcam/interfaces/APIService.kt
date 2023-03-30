@@ -1,9 +1,6 @@
 package br.net.ari.lprfiscalcam.interfaces
 
-import br.net.ari.lprfiscalcam.models.Camera
-import br.net.ari.lprfiscalcam.models.Cliente
-import br.net.ari.lprfiscalcam.models.Fiscalizacao
-import br.net.ari.lprfiscalcam.models.Veiculo
+import br.net.ari.lprfiscalcam.models.*
 import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -44,4 +41,7 @@ interface APIService {
 
     @PATCH("Camera/SetC2VByChave")
     fun patchC2VByChave(@Body camera: Camera?): Call<Camera?>
+
+    @POST("CameraLog/SetLog")
+    fun setLog(@Body camera: CameraLog?): Call<Void?>
 }

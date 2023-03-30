@@ -56,13 +56,19 @@ class CameraActivity : AppCompatActivity() {
 
     private val cameraExecutor by lazy { Executors.newSingleThreadExecutor() }
     private var cameraControl: CameraControl? = null
-    private lateinit var cameraInfo: CameraInfo
+    private var cameraInfo: CameraInfo? = null
 
     private lateinit var textViewTemperature: TextView
     private var intentfilter: IntentFilter? = null
 
     private var minimumLens: Float? = null
     private var minimumLensNum: Float? = null
+
+    private lateinit var seekBarBrilho: SeekBar
+
+    private lateinit var sharedPreference: SharedPreferences
+    private lateinit var editor: SharedPreferences.Editor
+
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -71,6 +77,7 @@ class CameraActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PermissionUtils.REQUEST_CODE && grantResults.contains(PermissionUtils.Permission.CAMERA.ordinal)) {
             loadFocus()
+            loadBrilho()
         }
     }
 
@@ -79,8 +86,8 @@ class CameraActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
 
-        val sharedPreference = getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
-        val editor = sharedPreference.edit()
+        sharedPreference = getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
+        editor = sharedPreference.edit()
 
         val relativeLayoutMainContainer =
             findViewById<RelativeLayout>(R.id.relativeLayoutMainContainer)
@@ -100,6 +107,7 @@ class CameraActivity : AppCompatActivity() {
 
         val seekBarZoom = findViewById<SeekBar>(R.id.seekBarZoom)
         val seekBarFoco = findViewById<SeekBar>(R.id.seekBarFoco)
+        seekBarBrilho = findViewById(R.id.seekBarBrilho)
 
         val buttonClose = findViewById<Button>(R.id.buttonClose)
         buttonClose.setOnClickListener {
@@ -217,6 +225,7 @@ class CameraActivity : AppCompatActivity() {
                 camera.cameraControl.cancelFocusAndMetering()
 
                 loadFocus()
+                loadBrilho()
 
                 try {
                     cameraProvider.unbindAll()
@@ -280,7 +289,7 @@ class CameraActivity : AppCompatActivity() {
 
                 Toast.makeText(
                     applicationContext,
-                    "Ajuste o zoom e foco deslizando na barra ao lado",
+                    "Ajuste o zoom, foco e brilho deslizando nas barras ao lado",
                     Toast.LENGTH_LONG
                 ).show()
 
@@ -428,6 +437,40 @@ class CameraActivity : AppCompatActivity() {
             }
         } catch (e: IOException) {
             throw RuntimeException(e)
+        }
+    }
+
+    private fun loadBrilhoData(): Boolean {
+        if (cameraInfo != null) {
+            val exposure = cameraInfo?.exposureState
+            if (exposure?.isExposureCompensationSupported == true) {
+                val exposureRange = exposure.exposureCompensationRange
+                val min = exposureRange.lower
+                val max = exposureRange.upper
+                seekBarBrilho.min = min
+                seekBarBrilho.max = max
+
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun loadBrilho() {
+        if (loadBrilhoData()) {
+            seekBarBrilho.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(
+                    seekBar: SeekBar?,
+                    progress: Int,
+                    fromUser: Boolean
+                ) {
+                    cameraControl?.setExposureCompensationIndex(progress)
+                }
+
+                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+            })
         }
     }
 
