@@ -22,22 +22,21 @@ interface APIService {
     fun getFiscalizacoes(): Call<List<Fiscalizacao>?>
 
     @GET("FiscalizacaoVeiculo/GetFromCameraANPR/{placa}/{fiscalizacaoId}/{dispositivo}/{cameraId}")
-    fun getVeiculoV2(
+    fun getVeiculo(
         @Path("placa") placa: String?,
         @Path("fiscalizacaoId") fiscalizacaoId: Long,
         @Path("dispositivo") dispositivo: String?,
         @Path("cameraId") cameraId: Long
         ): Call<Veiculo?>
 
-    @GET("FiscalizacaoVeiculo/GetFromCameraANPR/{placa}/{fiscalizacaoId}")
-    fun getVeiculo(
-        @Path("placa") placa: String?,
-        @Path("fiscalizacaoId") fiscalizacaoId: Long
-    ): Call<Veiculo?>
+    @GET("Camera/GetCameraByChaveVaxtor/{chave}")
+    fun getCameraByChaveVaxtor(
+        @Path("chave") chave: String?
+    ): Call<Camera?>
 
     @GET("Camera/GetCameraByChave/{chave}")
     fun getCameraByChave(
-        @Path("chave") login: String?
+        @Path("chave") chave: String?
     ): Call<Camera?>
 
     @POST("FiscalizacaoVeiculo/SaveFromVaxtorANPR")

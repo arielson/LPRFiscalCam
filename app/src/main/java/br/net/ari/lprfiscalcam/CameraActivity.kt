@@ -29,13 +29,11 @@ import br.net.ari.lprfiscalcam.core.*
 import br.net.ari.lprfiscalcam.data.ImageInfoPOJO
 import br.net.ari.lprfiscalcam.data.ImagePOJO
 import br.net.ari.lprfiscalcam.enums.ImageFormat
-import br.net.ari.lprfiscalcam.models.Camera
 import br.net.ari.lprfiscalcam.models.Fiscalizacao
 import br.net.ari.lprfiscalcam.models.Veiculo
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.vaxtor.alprlib.AlprOcr
 import com.vaxtor.alprlib.VaxtorAlprManager
-import com.vaxtor.alprlib.VaxtorLicensingManager
 import com.vaxtor.alprlib.arguments.OcrFindPlatesImageArgs
 import com.vaxtor.alprlib.arguments.OcrInitialiseArgs
 import com.vaxtor.alprlib.enums.OperMode
@@ -185,11 +183,6 @@ class CameraActivity : AppCompatActivity() {
             )
 
             initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
-            val c2v = VaxtorLicensingManager.getC2V()
-            if (!sharedPreference.contains("c2v")) {
-                saveData(sharedPreference, editor, c2v)
-            }
-
             val cameraProviderFuture = ProcessCameraProvider.getInstance(this.applicationContext)
             cameraProviderFuture.addListener({
                 cameraProvider = cameraProviderFuture.get()
@@ -340,8 +333,8 @@ class CameraActivity : AppCompatActivity() {
                 val plate = it._plate_info?._plate_number_asciivar
                 Log.d("Placa:", "$plate")
 
-                //, Utilities.getDeviceName(), sharedPreference.getLong("camera", 0)
-                Utilities.service().getVeiculo(plate, fiscalizacao.id)
+                val cameraId = sharedPreference.getLong("camera", 0)
+                Utilities.service().getVeiculo(plate, fiscalizacao.id, Utilities.getDeviceName(), cameraId)
                     .enqueue(object : Callback<Veiculo?> {
                         override fun onResponse(
                             call: Call<Veiculo?>,
@@ -349,6 +342,7 @@ class CameraActivity : AppCompatActivity() {
                         ) {
                             if (response.isSuccessful && response.body() != null) {
                                 val veiculo: Veiculo? = response.body()
+                                veiculo?.cameraId = cameraId
                                 veiculo?.placa = plate
                                 val confPerc = it._plate_info?._plate_read_confidence?.div(100.0)
                                 veiculo?.confianca = confPerc
@@ -372,7 +366,7 @@ class CameraActivity : AppCompatActivity() {
                                         var veiculoBitmap =
                                             Utilities.bitmapFromImagePojo(imagePOJO!!)!!
 
-                                        if (veiculo.pendencia == "Roubo_e_Furto") {
+                                        if (veiculo.pendencia?.contains("Roubo_e_Furto") == true) {
                                             val veiculoImage =
                                                 Utilities.getScaledImage(veiculoBitmap, 640, 480)
                                             val veiculoImageBase64 =
@@ -453,42 +447,6 @@ class CameraActivity : AppCompatActivity() {
         } catch (e: IOException) {
             throw RuntimeException(e)
         }
-    }
-
-    private fun saveData(sharedPreference: SharedPreferences, editor: SharedPreferences.Editor, c2v: String) {
-        val camera = Camera()
-        camera.id = sharedPreference.getLong("camera", 0)
-        camera.c2v = c2v
-        camera.uuid = Utilities.getDeviceName()
-        Utilities.service().patchC2VByChave(camera)
-            .enqueue(object : Callback<Camera?> {
-                override fun onResponse(
-                    call: Call<Camera?>,
-                    response: Response<Camera?>
-                ) {
-                    if (!response.isSuccessful) {
-                        Toast.makeText(
-                            applicationContext, Utilities.analiseException(
-                                response.code(), response.raw().toString(),
-                                if (response.errorBody() != null) response.errorBody()!!
-                                    .string() else null,
-                                applicationContext
-                            ), Toast.LENGTH_LONG
-                        ).show()
-                    } else {
-                        editor.putString("c2v", c2v)
-                        editor.apply()
-                    }
-                }
-
-                override fun onFailure(
-                    call: Call<Camera?>,
-                    t: Throwable
-                ) {
-                    t.printStackTrace()
-                    Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG).show()
-                }
-            })
     }
 
     private fun onYuvImage(image: ImagePOJO) {

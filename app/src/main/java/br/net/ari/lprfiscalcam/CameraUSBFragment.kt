@@ -176,8 +176,9 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack  {
             manager!!.eventPlateInfoCallback = { it ->
                 val plate = it._plate_info?._plate_number_asciivar
                 Log.d("Placa:", "$plate")
-//                val sharedPreference = requireContext().getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
-                Utilities.service().getVeiculo(plate, CameraActivity.fiscalizacao.id)
+                val sharedPreference = requireContext().getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
+                val cameraId = sharedPreference.getLong("camera", 0)
+                Utilities.service().getVeiculo(plate, CameraActivity.fiscalizacao.id, Utilities.getDeviceName(), cameraId)
                     .enqueue(object : Callback<Veiculo?> {
                         override fun onResponse(
                             call: Call<Veiculo?>,
@@ -185,6 +186,7 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack  {
                         ) {
                             if (response.isSuccessful && response.body() != null) {
                                 val veiculo: Veiculo? = response.body()
+                                veiculo?.cameraId = cameraId
                                 veiculo?.placa = plate
                                 val confPerc = it._plate_info?._plate_read_confidence?.div(100.0)
                                 veiculo?.confianca = confPerc
