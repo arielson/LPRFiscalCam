@@ -204,69 +204,52 @@ class MainActivity : AppCompatActivity() {
                             ) {
                                 if (response.isSuccessful && response.body() != null) {
                                     val camera = response.body()!!
-//                                    if (camera.c2V != null) {
-//                                        val ret = VaxtorLicensingManager.setC2V(camera.c2V!!)
-////                                        val ret = VaxtorLicensingManager.setC2V(VaxtorLicensingManager.getC2V())
-//                                        if (ret == 1L) {
-//                                            Toast.makeText(applicationContext, "Reativação efetuada com sucesso!", Toast.LENGTH_LONG).show()
-//                                            editor.putString("chave", camera.chaveVaxtor)
-//                                            editor.putString("c2v", camera.c2V)
-//                                            editor.putLong("camera", camera.id)
-//                                            editor.apply()
-//                                            buttonAcessar.performClick()
-//                                        } else {
-//                                            Toast.makeText(applicationContext, "Erro ao efetuar ativação. Entre contato com o suporte.", Toast.LENGTH_LONG).show()
-//                                        }
-//                                        relativeLayoutLoading.visibility = View.GONE
-//                                    } else {
-                                        VaxtorLicensingManager.registerLicense(camera.chaveVaxtor!!) { bool, error ->
-                                            if (bool) {
-                                                val c2V = VaxtorLicensingManager.getC2V()
-                                                val cameraInput = Camera()
-                                                cameraInput.id = camera.id
-                                                cameraInput.c2V = c2V
-                                                cameraInput.uuid = Utilities.getDeviceName()
-                                                Utilities.service().patchC2VByChave(cameraInput)
-                                                    .enqueue(object : Callback<Camera?> {
-                                                        override fun onResponse(
-                                                            call: Call<Camera?>,
-                                                            response: Response<Camera?>
-                                                        ) {
-                                                            if (!response.isSuccessful) {
-                                                                Toast.makeText(
-                                                                    applicationContext, Utilities.analiseException(
-                                                                        response.code(), response.raw().toString(),
-                                                                        if (response.errorBody() != null) response.errorBody()!!
-                                                                            .string() else null,
-                                                                        applicationContext
-                                                                    ), Toast.LENGTH_LONG
-                                                                ).show()
-                                                            } else {
-                                                                editor.putString("c2v", c2V)
-                                                                editor.putString("chave", camera.chaveVaxtor)
-                                                                editor.putLong("camera", camera.id)
-                                                                editor.apply()
+                                    VaxtorLicensingManager.registerLicense(camera.chaveVaxtor!!) { bool, error ->
+                                        if (bool) {
+                                            val c2V = VaxtorLicensingManager.getC2V()
+                                            val cameraInput = Camera()
+                                            cameraInput.id = camera.id
+                                            cameraInput.c2V = c2V
+                                            cameraInput.uuid = Utilities.getDeviceName()
+                                            Utilities.service().patchC2VByChave(cameraInput)
+                                                .enqueue(object : Callback<Camera?> {
+                                                    override fun onResponse(
+                                                        call: Call<Camera?>,
+                                                        response: Response<Camera?>
+                                                    ) {
+                                                        if (!response.isSuccessful) {
+                                                            Toast.makeText(
+                                                                applicationContext, Utilities.analiseException(
+                                                                    response.code(), response.raw().toString(),
+                                                                    if (response.errorBody() != null) response.errorBody()!!
+                                                                        .string() else null,
+                                                                    applicationContext
+                                                                ), Toast.LENGTH_LONG
+                                                            ).show()
+                                                        } else {
+                                                            editor.putString("chave", camera.chaveVaxtor)
+                                                            editor.putLong("camera", camera.id)
+                                                            editor.apply()
 
-                                                                buttonAcessar.performClick()
-                                                            }
-                                                            relativeLayoutLoading.visibility = View.GONE
+                                                            buttonAcessar.performClick()
                                                         }
+                                                        relativeLayoutLoading.visibility = View.GONE
+                                                    }
 
-                                                        override fun onFailure(
-                                                            call: Call<Camera?>,
-                                                            t: Throwable
-                                                        ) {
-                                                            relativeLayoutLoading.visibility = View.GONE
-                                                            t.printStackTrace()
-                                                            Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG).show()
-                                                        }
-                                                    })
-                                            } else {
-                                                Toast.makeText(applicationContext, error, Toast.LENGTH_LONG).show()
-                                                relativeLayoutLoading.visibility = View.GONE
-                                            }
+                                                    override fun onFailure(
+                                                        call: Call<Camera?>,
+                                                        t: Throwable
+                                                    ) {
+                                                        relativeLayoutLoading.visibility = View.GONE
+                                                        t.printStackTrace()
+                                                        Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG).show()
+                                                    }
+                                                })
+                                        } else {
+                                            Toast.makeText(applicationContext, error, Toast.LENGTH_LONG).show()
+                                            relativeLayoutLoading.visibility = View.GONE
                                         }
-//                                    }
+                                    }
                                 } else {
                                     Toast.makeText(
                                         applicationContext, Utilities.analiseException(
@@ -323,7 +306,6 @@ class MainActivity : AppCompatActivity() {
                                                 ), Toast.LENGTH_LONG
                                             ).show()
                                         } else {
-                                            editor.putString("c2v", c2V)
                                             editor.putLong("camera", camera.id)
                                             editor.apply()
 

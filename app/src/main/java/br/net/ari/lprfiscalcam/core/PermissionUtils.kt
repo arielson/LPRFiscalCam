@@ -9,7 +9,7 @@ import androidx.core.app.ActivityCompat
 //import androidx.fragment.app.Fragment
 
 object PermissionUtils {
-    private const val REQUEST_CODE = 123
+    const val REQUEST_CODE = 123
 
     val cameraPermissions = listOf(Permission.CAMERA) //, Permission.WRITE, Permission.READ)
 

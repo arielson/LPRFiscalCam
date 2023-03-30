@@ -69,6 +69,9 @@ class CameraActivity : AppCompatActivity() {
         permissions: Array<String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == PermissionUtils.REQUEST_CODE && grantResults.contains(PermissionUtils.Permission.CAMERA.ordinal)) {
+            loadFocus()
+        }
     }
 
     @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
@@ -213,28 +216,7 @@ class CameraActivity : AppCompatActivity() {
                 cameraInfo = camera.cameraInfo
                 camera.cameraControl.cancelFocusAndMetering()
 
-                val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-                if (cameraManager.cameraIdList.isNotEmpty()) {
-                    val cameraCharacteristics =
-                        cameraManager.getCameraCharacteristics(cameraManager.cameraIdList[0])
-                    val camCharacteristics =
-                        cameraCharacteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
-                    val isManualFocus =
-                        camCharacteristics?.any { it == CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR }
-                    if (isManualFocus == true) {
-                        minimumLens =
-                            cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
-                        val camera2CameraControl: Camera2CameraControl =
-                            Camera2CameraControl.from(cameraControl)
-                        val captureRequestOptions = CaptureRequestOptions.Builder()
-                            .setCaptureRequestOption(
-                                CaptureRequest.CONTROL_AF_MODE,
-                                CameraMetadata.CONTROL_AF_MODE_OFF
-                            )
-                            .build()
-                        camera2CameraControl.captureRequestOptions = captureRequestOptions
-                    }
-                }
+                loadFocus()
 
                 try {
                     cameraProvider.unbindAll()
@@ -273,8 +255,8 @@ class CameraActivity : AppCompatActivity() {
                         progress: Int,
                         fromUser: Boolean
                     ) {
-                        minimumLensNum = progress.toFloat() * minimumLens!! / 100
                         if (minimumLens != null) {
+                            minimumLensNum = progress.toFloat() * minimumLens!! / 100
                             val captureRequestOptions = CaptureRequestOptions.Builder()
                                 .setCaptureRequestOption(
                                     CaptureRequest.CONTROL_AF_MODE,
@@ -446,6 +428,32 @@ class CameraActivity : AppCompatActivity() {
             }
         } catch (e: IOException) {
             throw RuntimeException(e)
+        }
+    }
+
+    @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
+    fun loadFocus() {
+        val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        if (cameraManager.cameraIdList.isNotEmpty()) {
+            val cameraCharacteristics =
+                cameraManager.getCameraCharacteristics(cameraManager.cameraIdList[0])
+            val camCharacteristics =
+                cameraCharacteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+            val isManualFocus =
+                camCharacteristics?.any { it == CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR }
+            if (isManualFocus == true) {
+                minimumLens =
+                    cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
+                val camera2CameraControl: Camera2CameraControl =
+                    Camera2CameraControl.from(cameraControl)
+                val captureRequestOptions = CaptureRequestOptions.Builder()
+                    .setCaptureRequestOption(
+                        CaptureRequest.CONTROL_AF_MODE,
+                        CameraMetadata.CONTROL_AF_MODE_OFF
+                    )
+                    .build()
+                camera2CameraControl.captureRequestOptions = captureRequestOptions
+            }
         }
     }
 
