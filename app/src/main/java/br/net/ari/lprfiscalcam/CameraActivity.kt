@@ -55,7 +55,7 @@ class CameraActivity : AppCompatActivity() {
     private lateinit var cameraProvider: ProcessCameraProvider
 
     private val cameraExecutor by lazy { Executors.newSingleThreadExecutor() }
-    private lateinit var cameraControl: CameraControl
+    private var cameraControl: CameraControl? = null
     private lateinit var cameraInfo: CameraInfo
 
     private lateinit var textViewTemperature: TextView
@@ -237,7 +237,7 @@ class CameraActivity : AppCompatActivity() {
                         fromUser: Boolean
                     ) {
                         val zoom = progress / 100.toFloat()
-                        cameraControl.setLinearZoom(zoom)
+                        cameraControl?.setLinearZoom(zoom)
                         editor.putInt("zoom", progress)
                         editor.apply()
                     }
@@ -248,7 +248,7 @@ class CameraActivity : AppCompatActivity() {
                 })
 
                 val camera2CameraControl: Camera2CameraControl =
-                    Camera2CameraControl.from(cameraControl)
+                    Camera2CameraControl.from(cameraControl!!)
                 seekBarFoco.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(
                         seekBar: SeekBar?,
@@ -288,7 +288,7 @@ class CameraActivity : AppCompatActivity() {
                     val progress = sharedPreference.getInt("zoom", 0)
                     seekBarZoom.progress = progress
                     val zoom = progress / 100.toFloat()
-                    cameraControl.setLinearZoom(zoom)
+                    cameraControl?.setLinearZoom(zoom)
                 }
 
                 if (sharedPreference.contains("foco")) {
@@ -433,26 +433,28 @@ class CameraActivity : AppCompatActivity() {
 
     @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
     fun loadFocus() {
-        val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        if (cameraManager.cameraIdList.isNotEmpty()) {
-            val cameraCharacteristics =
-                cameraManager.getCameraCharacteristics(cameraManager.cameraIdList[0])
-            val camCharacteristics =
-                cameraCharacteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
-            val isManualFocus =
-                camCharacteristics?.any { it == CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR }
-            if (isManualFocus == true) {
-                minimumLens =
-                    cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
-                val camera2CameraControl: Camera2CameraControl =
-                    Camera2CameraControl.from(cameraControl)
-                val captureRequestOptions = CaptureRequestOptions.Builder()
-                    .setCaptureRequestOption(
-                        CaptureRequest.CONTROL_AF_MODE,
-                        CameraMetadata.CONTROL_AF_MODE_OFF
-                    )
-                    .build()
-                camera2CameraControl.captureRequestOptions = captureRequestOptions
+        if (cameraControl != null) {
+            val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            if (cameraManager.cameraIdList.isNotEmpty()) {
+                val cameraCharacteristics =
+                    cameraManager.getCameraCharacteristics(cameraManager.cameraIdList[0])
+                val camCharacteristics =
+                    cameraCharacteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+                val isManualFocus =
+                    camCharacteristics?.any { it == CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR }
+                if (isManualFocus == true) {
+                    minimumLens =
+                        cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
+                    val camera2CameraControl: Camera2CameraControl =
+                        Camera2CameraControl.from(cameraControl!!)
+                    val captureRequestOptions = CaptureRequestOptions.Builder()
+                        .setCaptureRequestOption(
+                            CaptureRequest.CONTROL_AF_MODE,
+                            CameraMetadata.CONTROL_AF_MODE_OFF
+                        )
+                        .build()
+                    camera2CameraControl.captureRequestOptions = captureRequestOptions
+                }
             }
         }
     }
