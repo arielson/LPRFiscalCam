@@ -63,6 +63,8 @@
 
                 <SeekBar
                     android:id="@+id/seekBarZoom"
+                    android:progressDrawable="@drawable/seekbar_progress_style"
+                    android:thumb="@drawable/seekbar_thumb_shape"
                     android:layout_width="300dp"
                     android:layout_height="wrap_content" />
 
@@ -78,6 +80,8 @@
 
                 <SeekBar
                     android:id="@+id/seekBarFoco"
+                    android:progressDrawable="@drawable/seekbar_progress_style"
+                    android:thumb="@drawable/seekbar_thumb_shape"
                     android:layout_width="300dp"
                     android:layout_height="wrap_content" />
 
@@ -93,6 +97,8 @@
 
                 <SeekBar
                     android:id="@+id/seekBarBrilho"
+                    android:progressDrawable="@drawable/seekbar_progress_style"
+                    android:thumb="@drawable/seekbar_thumb_shape"
                     android:layout_width="300dp"
                     android:layout_height="wrap_content" />
 
@@ -106,27 +112,35 @@
                     android:layout_width="300dp"
                     android:layout_height="wrap_content"/>
 
-                <Button
-                    android:id="@+id/buttonClose"
-                    android:background="@drawable/roundedbutton"
+                <LinearLayout
+                    android:orientation="horizontal"
+                    android:layout_gravity="end"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="end"
-                    android:text="@string/fechar"
-                    android:contentDescription="@string/app_name"
-                    android:layout_margin="8dp" />
+                    android:layout_height="wrap_content">
 
-                <Button
-                    android:id="@+id/buttonExit"
-                    android:textColor="@color/white"
-                    android:textSize="12sp"
-                    android:background="@drawable/roundedbutton_red"
-                    android:layout_width="50dp"
-                    android:layout_height="50dp"
-                    android:layout_gravity="end"
-                    android:text="@string/sair"
-                    android:contentDescription="@string/app_name"
-                    android:layout_margin="8dp" />
+                    <Button
+                        android:id="@+id/buttonClose"
+                        android:background="@drawable/roundedbutton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="end"
+                        android:text="@string/fechar"
+                        android:contentDescription="@string/app_name"
+                        android:layout_margin="8dp" />
+
+                    <Button
+                        android:id="@+id/buttonExit"
+                        android:textColor="@color/white"
+                        android:textSize="12sp"
+                        android:background="@drawable/roundedbutton_red"
+                        android:layout_width="50dp"
+                        android:layout_height="50dp"
+                        android:layout_gravity="end"
+                        android:text="@string/sair"
+                        android:contentDescription="@string/app_name"
+                        android:layout_margin="8dp" />
+
+                </LinearLayout>
 
             </LinearLayout>
 
