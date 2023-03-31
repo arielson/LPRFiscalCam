@@ -24,7 +24,10 @@ interface APIService {
         @Path("fiscalizacaoId") fiscalizacaoId: Long,
         @Path("dispositivo") dispositivo: String?,
         @Path("cameraId") cameraId: Long
-        ): Call<Veiculo?>
+    ): Call<Veiculo?>
+
+    @POST("FiscalizacaoVeiculo/SetFromCameraANPR")
+    fun setVeiculo(@Body veiculo: Veiculo?): Call<Veiculo?>
 
     @GET("Camera/GetCameraByChaveVaxtor/{chave}")
     fun getCameraByChaveVaxtor(

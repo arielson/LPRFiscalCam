@@ -9,4 +9,7 @@ class Veiculo {
     var pendencia: String? = null
     var confianca: Double? = null
     var cameraId: Long? = null
+    var fiscalizacaoId: Long? = null
+    var latitude: Double? = null
+    var longitude: Double? = null
 }

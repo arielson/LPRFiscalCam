@@ -7,6 +7,7 @@ import android.graphics.Rect
 import android.hardware.camera2.*
 import android.os.BatteryManager
 import android.os.Bundle
+import android.os.Looper
 import android.text.method.ScrollingMovementMethod
 import android.util.Base64
 import android.util.Log
@@ -31,6 +32,7 @@ import br.net.ari.lprfiscalcam.data.ImagePOJO
 import br.net.ari.lprfiscalcam.enums.ImageFormat
 import br.net.ari.lprfiscalcam.models.Fiscalizacao
 import br.net.ari.lprfiscalcam.models.Veiculo
+import com.google.android.gms.location.*
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.vaxtor.alprlib.AlprOcr
 import com.vaxtor.alprlib.VaxtorAlprManager
@@ -48,6 +50,10 @@ import java.util.concurrent.Executors
 
 
 class CameraActivity : AppCompatActivity() {
+    companion object {
+        lateinit var fiscalizacao: Fiscalizacao
+    }
+
     private lateinit var manager: VaxtorAlprManager
     private var initOcr: Long = -1
 
@@ -69,6 +75,11 @@ class CameraActivity : AppCompatActivity() {
     private lateinit var sharedPreference: SharedPreferences
     private lateinit var editor: SharedPreferences.Editor
 
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var locationRequest: LocationRequest
+    private lateinit var locationCallback: LocationCallback
+    private var latitude: Double? = null
+    private var longitude: Double? = null
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -78,13 +89,58 @@ class CameraActivity : AppCompatActivity() {
         if (requestCode == PermissionUtils.REQUEST_CODE && grantResults.contains(PermissionUtils.Permission.CAMERA.ordinal)) {
             loadFocus()
             loadBrilho()
+            startLocationUpdates()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        startLocationUpdates()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        stopLocationUpdates()
+    }
+
+    private fun stopLocationUpdates() {
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startLocationUpdates() {
+        fusedLocationClient.requestLocationUpdates(
+            locationRequest,
+            locationCallback,
+            Looper.getMainLooper()
+        )
     }
 
     @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
+
+        PermissionUtils.requestPermission(this, PermissionUtils.cameraPermissions)
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000).apply {
+            setMinUpdateDistanceMeters(5f)
+            setGranularity(Granularity.GRANULARITY_PERMISSION_LEVEL)
+            setWaitForAccurateLocation(true)
+        }.build()
+
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                super.onLocationResult(locationResult)
+                for (location in locationResult.locations) {
+                    Log.d("Latitude", "${location.latitude}")
+                    latitude = location.latitude
+                    Log.d("Longitude", "${location.longitude}")
+                    longitude = location.longitude
+                }
+            }
+        }
 
         sharedPreference = getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
         editor = sharedPreference.edit()
@@ -157,8 +213,6 @@ class CameraActivity : AppCompatActivity() {
             val alert = builder.create()
             alert.show()
         }
-
-        PermissionUtils.requestPermission(this, PermissionUtils.cameraPermissions)
 
         intentfilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         registerReceiver(broadcastreceiver, intentfilter)
@@ -325,7 +379,15 @@ class CameraActivity : AppCompatActivity() {
                 Log.d("Placa:", "$plate")
 
                 val cameraId = sharedPreference.getLong("camera", 0)
-                Utilities.service().getVeiculo(plate, fiscalizacao.id, Utilities.getDeviceName(), cameraId)
+                val veiculoInput = Veiculo()
+                veiculoInput.placa = plate
+                veiculoInput.fiscalizacaoId = fiscalizacao.id
+                veiculoInput.dispositivo = Utilities.getDeviceName()
+                veiculoInput.cameraId = cameraId
+                veiculoInput.latitude = latitude
+                veiculoInput.longitude = longitude
+                Utilities.service()
+                    .setVeiculo(veiculoInput)
                     .enqueue(object : Callback<Veiculo?> {
                         override fun onResponse(
                             call: Call<Veiculo?>,
@@ -431,7 +493,11 @@ class CameraActivity : AppCompatActivity() {
 
                         override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
                             t.printStackTrace()
-                            Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG).show()
+                            Toast.makeText(
+                                applicationContext,
+                                R.string.service_failure,
+                                Toast.LENGTH_LONG
+                            ).show()
                         }
                     })
             }
@@ -527,10 +593,6 @@ class CameraActivity : AppCompatActivity() {
             )
         else if (imagePOJO.imageFormat == ImageFormat.JPEG)
             manager.ocrFindPlatesJPEG(imagePOJO.src)
-    }
-
-    companion object {
-        lateinit var fiscalizacao: Fiscalizacao
     }
 
     private val broadcastreceiver: BroadcastReceiver = object : BroadcastReceiver() {
