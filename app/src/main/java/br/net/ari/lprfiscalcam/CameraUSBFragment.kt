@@ -4,12 +4,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.Bitmap
-import android.graphics.Rect
 import android.os.BatteryManager
 import android.os.Bundle
 import android.text.method.ScrollingMovementMethod
-import android.util.Base64
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -22,7 +19,6 @@ import br.net.ari.lprfiscalcam.core.Utilities
 import br.net.ari.lprfiscalcam.data.ImageInfoPOJO
 import br.net.ari.lprfiscalcam.databinding.FragmentCameraUSBBinding
 import br.net.ari.lprfiscalcam.enums.ImageFormat
-import br.net.ari.lprfiscalcam.models.Veiculo
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.jiangdg.ausbc.MultiCameraClient
 import com.jiangdg.ausbc.base.CameraFragment
@@ -39,10 +35,6 @@ import com.vaxtor.alprlib.VaxtorLicensingManager
 import com.vaxtor.alprlib.arguments.OcrFindPlatesImageArgs
 import com.vaxtor.alprlib.arguments.OcrInitialiseArgs
 import com.vaxtor.alprlib.enums.OperMode
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -176,93 +168,93 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack  {
             manager!!.eventPlateInfoCallback = { it ->
                 val plate = it._plate_info?._plate_number_asciivar
                 Log.d("Placa:", "$plate")
-                val sharedPreference = requireContext().getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
-                val cameraId = sharedPreference.getLong("camera", 0)
-                Utilities.service().getVeiculo(plate, CameraActivity.fiscalizacao.id, Utilities.getDeviceName(), cameraId)
-                    .enqueue(object : Callback<Veiculo?> {
-                        override fun onResponse(
-                            call: Call<Veiculo?>,
-                            response: Response<Veiculo?>
-                        ) {
-                            if (response.isSuccessful && response.body() != null) {
-                                val veiculo: Veiculo? = response.body()
-                                veiculo?.cameraId = cameraId
-                                veiculo?.placa = plate
-                                val confPerc = it._plate_info?._plate_read_confidence?.div(100.0)
-                                veiculo?.confianca = confPerc
-                                veiculo?.dispositivo = Utilities.getDeviceName()
-                                if (veiculo?.id!! > 0) {
-                                    val fullText = "* $plate - ${veiculo.pendencia}\n\n${textViewPlateLog?.text}\n"
-                                    textViewPlateLog?.text = fullText
-
-                                    if (it._source_image != null ) {
-                                        val imagePOJO = Utilities.mapImagePOJO(
-                                            ImageInfoPOJO(
-                                            _format = it._source_image!!._format,
-                                            _height = it._source_image!!._height,
-                                            _width = it._source_image!!._width,
-                                            _image = it._source_image!!._image,
-                                            _size = it._source_image!!._size
-                                        ))
-
-                                        var veiculoBitmap = Utilities.bitmapFromImagePojo(imagePOJO!!)!!
-                                        val veiculoImage = Utilities.getScaledImage(veiculoBitmap, 640, 480)
-                                        val veiculoImageBase64 = Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
-                                        veiculo.foto2 = veiculoImageBase64
-                                        val plateBox = it._plate_info?._plate_bounding_box!!
-                                        val plateRect = Rect(plateBox[0], plateBox[1], plateBox[2], plateBox[3])
-                                        veiculoBitmap = Utilities.bitmapFromImagePojo(imagePOJO)!!
-                                        val plateBitamap = Utilities.cropBitmap(veiculoBitmap,
-                                            plateRect
-                                        )
-                                        val byteArrayOutputStream = ByteArrayOutputStream()
-                                        plateBitamap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
-                                        val byteArray: ByteArray = byteArrayOutputStream.toByteArray()
-                                        val plateImageBase64 = Base64.encodeToString(byteArray, Base64.NO_WRAP)
-                                        veiculo.foto1 = plateImageBase64
-                                    }
-                                    Utilities.service().postVeiculo(veiculo)
-                                        .enqueue(object : Callback<String?> {
-                                            override fun onResponse(
-                                                call: Call<String?>,
-                                                response: Response<String?>
-                                            ) {
-                                                if (!response.isSuccessful) {
-                                                    try {
-                                                        Toast.makeText(
-                                                            requireContext(), Utilities.analiseException(
-                                                                response.code(),
-                                                                response.raw().toString(),
-                                                                if (response.errorBody() != null) response.errorBody()!!
-                                                                    .string() else null,
-                                                                requireContext()
-                                                            ), Toast.LENGTH_LONG
-                                                        ).show()
-                                                    } catch (e: IOException) {
-                                                        e.printStackTrace()
-                                                    }
-                                                }
-                                            }
-
-                                            override fun onFailure(
-                                                call: Call<String?>,
-                                                t: Throwable
-                                            ) {
-                                                t.printStackTrace()
-                                                Toast.makeText(requireContext(), "Erro ao acessar servidor. Verifique internet.", Toast.LENGTH_LONG).show()
-                                            }
-                                        })
-                                } else {
-                                    val fullText = "* $plate - OK\n\n${textViewPlateLog?.text}\n"
-                                    textViewPlateLog?.text = fullText
-                                }
-                            }
-                        }
-
-                        override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
-                            t.printStackTrace()
-                        }
-                    })
+//                val sharedPreference = requireContext().getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
+//                val cameraId = sharedPreference.getLong("camera", 0)
+//                Utilities.service().setVeiculo(plate, CameraActivity.fiscalizacao.id, Utilities.getDeviceName(), cameraId)
+//                    .enqueue(object : Callback<Veiculo?> {
+//                        override fun onResponse(
+//                            call: Call<Veiculo?>,
+//                            response: Response<Veiculo?>
+//                        ) {
+//                            if (response.isSuccessful && response.body() != null) {
+//                                val veiculo: Veiculo? = response.body()
+//                                veiculo?.cameraId = cameraId
+//                                veiculo?.placa = plate
+//                                val confPerc = it._plate_info?._plate_read_confidence?.div(100.0)
+//                                veiculo?.confianca = confPerc
+//                                veiculo?.dispositivo = Utilities.getDeviceName()
+//                                if (veiculo?.id!! > 0) {
+//                                    val fullText = "* $plate - ${veiculo.pendencia}\n\n${textViewPlateLog?.text}\n"
+//                                    textViewPlateLog?.text = fullText
+//
+//                                    if (it._source_image != null ) {
+//                                        val imagePOJO = Utilities.mapImagePOJO(
+//                                            ImageInfoPOJO(
+//                                            _format = it._source_image!!._format,
+//                                            _height = it._source_image!!._height,
+//                                            _width = it._source_image!!._width,
+//                                            _image = it._source_image!!._image,
+//                                            _size = it._source_image!!._size
+//                                        ))
+//
+//                                        var veiculoBitmap = Utilities.bitmapFromImagePojo(imagePOJO!!)!!
+//                                        val veiculoImage = Utilities.getScaledImage(veiculoBitmap, 640, 480)
+//                                        val veiculoImageBase64 = Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
+//                                        veiculo.foto2 = veiculoImageBase64
+//                                        val plateBox = it._plate_info?._plate_bounding_box!!
+//                                        val plateRect = Rect(plateBox[0], plateBox[1], plateBox[2], plateBox[3])
+//                                        veiculoBitmap = Utilities.bitmapFromImagePojo(imagePOJO)!!
+//                                        val plateBitamap = Utilities.cropBitmap(veiculoBitmap,
+//                                            plateRect
+//                                        )
+//                                        val byteArrayOutputStream = ByteArrayOutputStream()
+//                                        plateBitamap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
+//                                        val byteArray: ByteArray = byteArrayOutputStream.toByteArray()
+//                                        val plateImageBase64 = Base64.encodeToString(byteArray, Base64.NO_WRAP)
+//                                        veiculo.foto1 = plateImageBase64
+//                                    }
+//                                    Utilities.service().postVeiculo(veiculo)
+//                                        .enqueue(object : Callback<String?> {
+//                                            override fun onResponse(
+//                                                call: Call<String?>,
+//                                                response: Response<String?>
+//                                            ) {
+//                                                if (!response.isSuccessful) {
+//                                                    try {
+//                                                        Toast.makeText(
+//                                                            requireContext(), Utilities.analiseException(
+//                                                                response.code(),
+//                                                                response.raw().toString(),
+//                                                                if (response.errorBody() != null) response.errorBody()!!
+//                                                                    .string() else null,
+//                                                                requireContext()
+//                                                            ), Toast.LENGTH_LONG
+//                                                        ).show()
+//                                                    } catch (e: IOException) {
+//                                                        e.printStackTrace()
+//                                                    }
+//                                                }
+//                                            }
+//
+//                                            override fun onFailure(
+//                                                call: Call<String?>,
+//                                                t: Throwable
+//                                            ) {
+//                                                t.printStackTrace()
+//                                                Toast.makeText(requireContext(), "Erro ao acessar servidor. Verifique internet.", Toast.LENGTH_LONG).show()
+//                                            }
+//                                        })
+//                                } else {
+//                                    val fullText = "* $plate - OK\n\n${textViewPlateLog?.text}\n"
+//                                    textViewPlateLog?.text = fullText
+//                                }
+//                            }
+//                        }
+//
+//                        override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
+//                            t.printStackTrace()
+//                        }
+//                    })
             }
         } catch (e: IOException) {
             throw RuntimeException(e)

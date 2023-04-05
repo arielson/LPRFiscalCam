@@ -18,16 +18,11 @@ interface APIService {
     @GET("Fiscalizacao/GetByCliente")
     fun getFiscalizacoes(): Call<List<Fiscalizacao>?>
 
-    @GET("FiscalizacaoVeiculo/GetFromCameraANPR/{placa}/{fiscalizacaoId}/{dispositivo}/{cameraId}")
-    fun getVeiculo(
-        @Path("placa") placa: String?,
-        @Path("fiscalizacaoId") fiscalizacaoId: Long,
-        @Path("dispositivo") dispositivo: String?,
-        @Path("cameraId") cameraId: Long
-    ): Call<Veiculo?>
-
     @POST("FiscalizacaoVeiculo/SetFromCameraANPR")
     fun setVeiculo(@Body veiculo: Veiculo?): Call<Veiculo?>
+
+    @POST("FiscalizacaoVeiculo/SaveFromVaxtorANPR")
+    fun postVeiculo(@Body veiculo: Veiculo?): Call<String?>
 
     @GET("Camera/GetCameraByChaveVaxtor/{chave}")
     fun getCameraByChaveVaxtor(
@@ -38,9 +33,6 @@ interface APIService {
     fun getCameraByChave(
         @Path("chave") chave: String?
     ): Call<Camera?>
-
-    @POST("FiscalizacaoVeiculo/SaveFromVaxtorANPR")
-    fun postVeiculo(@Body veiculo: Veiculo?): Call<String?>
 
     @PATCH("Camera/SetC2VByChave")
     fun patchC2VByChave(@Body camera: Camera?): Call<Camera?>

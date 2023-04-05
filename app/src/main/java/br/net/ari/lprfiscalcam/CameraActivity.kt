@@ -488,6 +488,18 @@ class CameraActivity : AppCompatActivity() {
                                     val fullText = "* $plate - OK\n\n${textViewPlateLog.text}\n"
                                     textViewPlateLog.text = fullText
                                 }
+                            } else {
+                                Toast.makeText(
+                                    applicationContext,
+                                    Utilities.analiseException(
+                                        response.code(),
+                                        response.raw().toString(),
+                                        if (response.errorBody() != null) response.errorBody()!!
+                                            .string() else null,
+                                        applicationContext
+                                    ),
+                                    Toast.LENGTH_LONG
+                                ).show()
                             }
                         }
 
