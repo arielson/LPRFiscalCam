@@ -24,8 +24,8 @@ import java.util.concurrent.TimeUnit
 
 object Utilities {
     private const val Host = "lprfiscalapi.ari.net.br"
+//    private const val Host = "lprfiscalapihomol.ari.net.br"
 
-    //    private final static String Host = "8ad6-191-136-213-194.ngrok.io";
     private const val ServiceUrl = "https://$Host/api/v1/"
     private var service: APIService? = null
     private val interceptor = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
@@ -114,7 +114,7 @@ object Utilities {
     fun getScaledImage(bitmapImage: Bitmap, newWidth: Int, newHeight: Int): ByteArray? {
         val mutableBitmapImage = Bitmap.createScaledBitmap(bitmapImage, newWidth, newHeight, false)
         val outputStream = ByteArrayOutputStream()
-        mutableBitmapImage.compress(Bitmap.CompressFormat.PNG, 0, outputStream)
+        mutableBitmapImage.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
         if (mutableBitmapImage != bitmapImage) {
             mutableBitmapImage.recycle()
         }

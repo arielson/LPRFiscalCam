@@ -1,12 +1,12 @@
 <resources>
-    <string name="app_name">LPRFiscalCam</string>
+    <string name="app_name">LPR Fiscal Cam</string>
     <string name="service_failure">Não foi possível efetuar solicitação. Tente novamente.</string>
     <string name="login">Login</string>
     <string name="senha">Senha</string>
     <string name="acessar">Acessar</string>
     <string name="sair">Sair</string>
-    <string name="zoom_in">Zoom +</string>
-    <string name="zoom_out">Zoom -</string>
-    <string name="auto_foco">Auto Foco</string>
-    <string name="zoom_zero">Zoom 0</string>
+    <string name="zoom">ZOOM</string>
+    <string name="foco">FOCO</string>
+    <string name="fechar">Fechar</string>
+    <string name="brilho">BRILHO</string>
 </resources>
