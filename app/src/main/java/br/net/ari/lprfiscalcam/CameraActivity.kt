@@ -8,6 +8,7 @@ import android.hardware.camera2.*
 import android.os.BatteryManager
 import android.os.Bundle
 import android.os.Looper
+import android.text.Html
 import android.text.method.ScrollingMovementMethod
 import android.util.Base64
 import android.util.Log
@@ -374,6 +375,7 @@ class CameraActivity : AppCompatActivity() {
                 }
             }, ContextCompat.getMainExecutor(this.applicationContext))
 
+            var logText = ""
             manager.eventPlateInfoCallback = { it ->
                 val plate = it._plate_info?._plate_number_asciivar
                 Log.d("Placa:", "$plate")
@@ -401,9 +403,11 @@ class CameraActivity : AppCompatActivity() {
                                 veiculo?.confianca = confPerc
                                 veiculo?.dispositivo = Utilities.getDeviceName()
                                 if (veiculo?.id!! > 0) {
-                                    val fullText =
-                                        "* $plate - ${veiculo.pendencia}\n\n${textViewPlateLog.text}\n"
-                                    textViewPlateLog.text = fullText
+//                                    val fullText =
+//                                        "* $plate - ${veiculo.pendencia}\n\n${textViewPlateLog.text}\n"
+                                    logText =
+                                        "<font color=${Utilities.colorByStatus(veiculo.pendencia)}>* $plate - ${veiculo.pendencia}</font><br><br>${logText}\n"
+                                    textViewPlateLog.text = Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
 
                                     if (it._source_image != null) {
                                         val imagePOJO = Utilities.mapImagePOJO(
@@ -485,8 +489,9 @@ class CameraActivity : AppCompatActivity() {
                                             }
                                         })
                                 } else {
-                                    val fullText = "* $plate - OK\n\n${textViewPlateLog.text}\n"
-                                    textViewPlateLog.text = fullText
+                                    //val fullText = "* $plate - OK\n\n${textViewPlateLog.text}\n"
+                                    logText = "<font color=#5EBA7D>* $plate - OK</font><br><br>${logText}\n"
+                                    textViewPlateLog.text = Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
                                 }
                             } else {
                                 Toast.makeText(

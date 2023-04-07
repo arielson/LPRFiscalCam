@@ -187,4 +187,24 @@ object Utilities {
             first.uppercaseChar().toString() + s.substring(1)
         }
     }
+
+    fun colorByStatus(status: String?): String {
+        if (status?.contains("Roubo_e_Furto") == true) {
+            return "#ff0000"
+        } else if (status?.contains("Licenciamento") == true) {
+            return "#7393B3"
+        } else if (status?.contains("Clonagem") == true) {
+            return "#A52A2A"
+        } else if (status?.contains("Restricao_Judicial") == true) {
+            return "#36013F"
+        } else if (status?.contains("CNH_Suspensa") == true) {
+            return "#DD6E0F"
+        } else if (status?.contains("CNH_Vencida") == true) {
+            return "#00FF00"
+        } else if (status?.contains("CNH_Cassada") == true) {
+            return "#ffc0cb"
+        }
+
+        return "#000000"
+    }
 }
