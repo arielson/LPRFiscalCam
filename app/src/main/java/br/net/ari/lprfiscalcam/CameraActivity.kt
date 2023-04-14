@@ -403,8 +403,6 @@ class CameraActivity : AppCompatActivity() {
                                 veiculo?.confianca = confPerc
                                 veiculo?.dispositivo = Utilities.getDeviceName()
                                 if (veiculo?.id!! > 0) {
-//                                    val fullText =
-//                                        "* $plate - ${veiculo.pendencia}\n\n${textViewPlateLog.text}\n"
                                     logText =
                                         "<font color=${Utilities.colorByStatus(veiculo.pendencia)}>* $plate - ${veiculo.pendencia}</font><br><br>${logText}\n"
                                     textViewPlateLog.text = Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
@@ -489,7 +487,6 @@ class CameraActivity : AppCompatActivity() {
                                             }
                                         })
                                 } else {
-                                    //val fullText = "* $plate - OK\n\n${textViewPlateLog.text}\n"
                                     logText = "<font color=#5EBA7D>* $plate - OK</font><br><br>${logText}\n"
                                     textViewPlateLog.text = Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
                                 }
