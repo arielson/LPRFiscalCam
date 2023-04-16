@@ -2,10 +2,13 @@ package br.net.ari.lprfiscalcam
 
 import android.annotation.SuppressLint
 import android.content.*
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.hardware.camera2.*
 import android.os.BatteryManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Looper
 import android.text.Html
@@ -24,6 +27,7 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -31,12 +35,15 @@ import br.net.ari.lprfiscalcam.core.*
 import br.net.ari.lprfiscalcam.data.ImageInfoPOJO
 import br.net.ari.lprfiscalcam.data.ImagePOJO
 import br.net.ari.lprfiscalcam.enums.ImageFormat
+import br.net.ari.lprfiscalcam.models.Camera
+import br.net.ari.lprfiscalcam.models.CameraLog
 import br.net.ari.lprfiscalcam.models.Fiscalizacao
 import br.net.ari.lprfiscalcam.models.Veiculo
 import com.google.android.gms.location.*
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.vaxtor.alprlib.AlprOcr
 import com.vaxtor.alprlib.VaxtorAlprManager
+import com.vaxtor.alprlib.VaxtorLicensingManager
 import com.vaxtor.alprlib.arguments.OcrFindPlatesImageArgs
 import com.vaxtor.alprlib.arguments.OcrInitialiseArgs
 import com.vaxtor.alprlib.enums.OperMode
@@ -47,6 +54,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.*
 import java.util.concurrent.Executors
 
 
@@ -249,6 +257,118 @@ class CameraActivity : AppCompatActivity() {
             )
 
             initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
+
+            if (initOcr == -1L) {
+                Toast.makeText(
+                    applicationContext,
+                    "Atualizando chave...",
+                    Toast.LENGTH_LONG
+                ).show()
+                val chave = sharedPreference.getString("chave_lprfiscal", "")
+                if (chave != null && chave.isNotEmpty()) {
+                    Utilities.service().getCameraByChave(chave)
+                        .enqueue(object : Callback<Camera?> {
+                            override fun onResponse(
+                                call: Call<Camera?>,
+                                response: Response<Camera?>
+                            ) {
+                                if (response.isSuccessful && response.body() != null) {
+                                    val camera = response.body()!!
+                                    VaxtorLicensingManager.registerLicense(camera.chaveVaxtor!!) { bool, error ->
+                                        if (!bool) {
+                                            val packageInfo = getPackageInfo()
+                                            val verCode =
+                                                PackageInfoCompat.getLongVersionCode(packageInfo)
+                                                    .toInt()
+
+                                            val initOcr = manager.initOcr(
+                                                ocrInitialiseArgs,
+                                                FirebaseCrashlytics.getInstance()
+                                            )
+
+                                            if (initOcr < 1) {
+                                                val cameraLog = CameraLog()
+                                                cameraLog.cameraId = camera.id
+                                                cameraLog.dispositivo =
+                                                    Utilities.getDeviceName()
+                                                cameraLog.texto =
+                                                    "App VerCode: $verCode <br> Chave: $chave <br> Chave Vaxtor: ${camera.chaveVaxtor!!} <br> Erro initOcr: $initOcr <br> Erro: $error"
+                                                Utilities.service()
+                                                    .setLog(cameraLog)
+                                                    .enqueue(object :
+                                                        Callback<Void?> {
+                                                        override fun onResponse(
+                                                            call: Call<Void?>,
+                                                            response: Response<Void?>
+                                                        ) {
+                                                            if (response.isSuccessful) {
+                                                                Toast.makeText(
+                                                                    applicationContext,
+                                                                    "Ocorreu um erro! Log enviado com sucesso. Suporte irá verificar o problema.",
+                                                                    Toast.LENGTH_LONG
+                                                                ).show()
+                                                            } else {
+                                                                Toast.makeText(
+                                                                    applicationContext,
+                                                                    Utilities.analiseException(
+                                                                        response.code(),
+                                                                        response.raw()
+                                                                            .toString(),
+                                                                        if (response.errorBody() != null) response.errorBody()!!
+                                                                            .string() else null,
+                                                                        applicationContext
+                                                                    ),
+                                                                    Toast.LENGTH_LONG
+                                                                ).show()
+                                                            }
+                                                        }
+
+                                                        override fun onFailure(
+                                                            call: Call<Void?>,
+                                                            t: Throwable
+                                                        ) {
+                                                            t.printStackTrace()
+                                                            Toast.makeText(
+                                                                applicationContext,
+                                                                R.string.service_failure,
+                                                                Toast.LENGTH_LONG
+                                                            ).show()
+                                                        }
+                                                    })
+                                            } else {
+                                                sendData(camera)
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Toast.makeText(
+                                        applicationContext, Utilities.analiseException(
+                                            response.code(), response.raw().toString(),
+                                            if (response.errorBody() != null) response.errorBody()!!
+                                                .string() else null,
+                                            applicationContext
+                                        ), Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+
+                            override fun onFailure(call: Call<Camera?>, t: Throwable) {
+                                t.printStackTrace()
+                                Toast.makeText(
+                                    applicationContext,
+                                    R.string.service_failure,
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        })
+                } else {
+                    Toast.makeText(
+                        applicationContext,
+                        "Chave local não encontrada",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
             val cameraProviderFuture = ProcessCameraProvider.getInstance(this.applicationContext)
             cameraProviderFuture.addListener({
                 cameraProvider = cameraProviderFuture.get()
@@ -405,7 +525,8 @@ class CameraActivity : AppCompatActivity() {
                                 if (veiculo?.id!! > 0) {
                                     logText =
                                         "<font color=${Utilities.colorByStatus(veiculo.pendencia)}>* $plate - ${veiculo.pendencia}</font><br><br>${logText}\n"
-                                    textViewPlateLog.text = Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
+                                    textViewPlateLog.text =
+                                        Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
 
                                     if (it._source_image != null) {
                                         val imagePOJO = Utilities.mapImagePOJO(
@@ -487,8 +608,10 @@ class CameraActivity : AppCompatActivity() {
                                             }
                                         })
                                 } else {
-                                    logText = "<font color=#5EBA7D>* $plate - OK</font><br><br>${logText}\n"
-                                    textViewPlateLog.text = Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
+                                    logText =
+                                        "<font color=#5EBA7D>* $plate - OK</font><br><br>${logText}\n"
+                                    textViewPlateLog.text =
+                                        Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
                                 }
                             } else {
                                 Toast.makeText(
@@ -586,6 +709,8 @@ class CameraActivity : AppCompatActivity() {
         try {
             recognizeYuvImage(image)
         } catch (e: Exception) {
+            Toast.makeText(applicationContext, "Erro: $e", Toast.LENGTH_SHORT)
+                .show()
             Log.e("Erro", "onYuvImage $e")
         }
     }
@@ -623,5 +748,51 @@ class CameraActivity : AppCompatActivity() {
 
             textViewTemperature.text = finalString
         }
+    }
+
+    @Suppress("DEPRECATION")
+    fun getPackageInfo(): PackageInfo {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            packageManager.getPackageInfo(packageName, 0)
+        }
+    }
+
+    fun sendData(
+        camera: Camera
+    ) {
+        val c2V = VaxtorLicensingManager.getC2V()
+        val cameraInput = Camera()
+        cameraInput.id = camera.id
+        cameraInput.c2V = c2V
+        cameraInput.uuid = Utilities.getDeviceName()
+        Utilities.service().patchC2VByChave(cameraInput)
+            .enqueue(object : Callback<Camera?> {
+                override fun onResponse(
+                    call: Call<Camera?>,
+                    response: Response<Camera?>
+                ) {
+                    if (!response.isSuccessful) {
+                        Toast.makeText(
+                            applicationContext, Utilities.analiseException(
+                                response.code(), response.raw().toString(),
+                                if (response.errorBody() != null) response.errorBody()!!
+                                    .string() else null,
+                                applicationContext
+                            ), Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+
+                override fun onFailure(
+                    call: Call<Camera?>,
+                    t: Throwable
+                ) {
+                    t.printStackTrace()
+                    Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG)
+                        .show()
+                }
+            })
     }
 }

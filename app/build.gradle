@@ -14,8 +14,8 @@ android {
         applicationId "br.net.ari.lprfiscalcam"
         minSdk 29
         targetSdk 33
-        versionCode 5
-        versionName "1.0.4"
+        versionCode 11
+        versionName "1.0.10"
 
         multiDexEnabled true
 
@@ -28,7 +28,7 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled true
+            minifyEnabled false
 
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

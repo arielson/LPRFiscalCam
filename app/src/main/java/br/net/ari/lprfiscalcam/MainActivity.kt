@@ -4,7 +4,10 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences.Editor
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
 import android.hardware.usb.UsbManager
+import android.os.Build
 import android.os.Bundle
 import android.text.InputFilter
 import android.util.Log
@@ -13,6 +16,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.pm.PackageInfoCompat
 import br.net.ari.lprfiscalcam.adapters.FiscalizacaoAdapter
 import br.net.ari.lprfiscalcam.core.Constants
 import br.net.ari.lprfiscalcam.core.PermissionUtils
@@ -79,7 +83,6 @@ class MainActivity : AppCompatActivity() {
             max_char_height = Constants.MaxCharHeight,
             detect_multiline_plate = Constants.DetectMultilinePlate
         )
-
 
         val activity: AppCompatActivity = this
         val textFieldLogin = findViewById<TextInputLayout>(R.id.textFieldLogin)
@@ -249,6 +252,7 @@ class MainActivity : AppCompatActivity() {
                                 ) {
                                     if (response.isSuccessful && response.body() != null) {
                                         val camera = response.body()!!
+                                        camera.chaveLprFiscal = chave
                                         VaxtorLicensingManager.registerLicense(camera.chaveVaxtor!!) { bool, error ->
                                             if (bool) {
                                                 sendData(
@@ -258,79 +262,73 @@ class MainActivity : AppCompatActivity() {
                                                     relativeLayoutLoading
                                                 )
                                             } else {
+                                                val packageInfo = getPackageInfo()
+                                                val verCode =
+                                                    PackageInfoCompat.getLongVersionCode(packageInfo)
+                                                        .toInt()
+
+                                                if (camera.c2V?.isNotEmpty() == true) {
+                                                    VaxtorLicensingManager.setC2V(camera.c2V!!)
+                                                }
+
                                                 val initOcr = manager.initOcr(
                                                     ocrInitialiseArgs,
                                                     FirebaseCrashlytics.getInstance()
                                                 )
+
                                                 if (initOcr < 1) {
                                                     val cameraLog = CameraLog()
                                                     cameraLog.cameraId = camera.id
                                                     cameraLog.dispositivo =
                                                         Utilities.getDeviceName()
                                                     cameraLog.texto =
-                                                        "Chave: $chave <br> Chave Vaxtor: ${camera.chaveVaxtor!!} <br> Erro initOcr: $initOcr <br> Erro: $error"
-                                                    val dialogErro =
-                                                        AlertDialog.Builder(this@MainActivity)
-                                                            .setTitle("Chave")
-                                                            .setMessage("Não foi possível validar a chave. Deseja enviar log para o suporte?")
-                                                            .setPositiveButton("Sim") { _, _ ->
-                                                                Utilities.service()
-                                                                    .setLog(cameraLog)
-                                                                    .enqueue(object :
-                                                                        Callback<Void?> {
-                                                                        override fun onResponse(
-                                                                            call: Call<Void?>,
-                                                                            response: Response<Void?>
-                                                                        ) {
-                                                                            if (response.isSuccessful) {
-                                                                                Toast.makeText(
-                                                                                    applicationContext,
-                                                                                    "Log enviado com sucesso. Suporte irá verificar o problema.",
-                                                                                    Toast.LENGTH_LONG
-                                                                                ).show()
-                                                                            } else {
-                                                                                Toast.makeText(
-                                                                                    applicationContext,
-                                                                                    Utilities.analiseException(
-                                                                                        response.code(),
-                                                                                        response.raw()
-                                                                                            .toString(),
-                                                                                        if (response.errorBody() != null) response.errorBody()!!
-                                                                                            .string() else null,
-                                                                                        applicationContext
-                                                                                    ),
-                                                                                    Toast.LENGTH_LONG
-                                                                                ).show()
-                                                                            }
-                                                                            relativeLayoutLoading.visibility =
-                                                                                View.GONE
-                                                                        }
-
-                                                                        override fun onFailure(
-                                                                            call: Call<Void?>,
-                                                                            t: Throwable
-                                                                        ) {
-                                                                            relativeLayoutLoading.visibility =
-                                                                                View.GONE
-                                                                            t.printStackTrace()
-                                                                            Toast.makeText(
-                                                                                applicationContext,
-                                                                                R.string.service_failure,
-                                                                                Toast.LENGTH_LONG
-                                                                            ).show()
-                                                                        }
-                                                                    })
+                                                        "App VerCode: $verCode <br> Chave: $chave <br> Chave Vaxtor: ${camera.chaveVaxtor!!} <br> Erro initOcr: $initOcr <br> Erro: $error"
+                                                    Utilities.service()
+                                                        .setLog(cameraLog)
+                                                        .enqueue(object :
+                                                            Callback<Void?> {
+                                                            override fun onResponse(
+                                                                call: Call<Void?>,
+                                                                response: Response<Void?>
+                                                            ) {
+                                                                if (response.isSuccessful) {
+                                                                    Toast.makeText(
+                                                                        applicationContext,
+                                                                        "Ocorreu um erro! Log enviado com sucesso. Suporte irá verificar o problema.",
+                                                                        Toast.LENGTH_LONG
+                                                                    ).show()
+                                                                } else {
+                                                                    Toast.makeText(
+                                                                        applicationContext,
+                                                                        Utilities.analiseException(
+                                                                            response.code(),
+                                                                            response.raw()
+                                                                                .toString(),
+                                                                            if (response.errorBody() != null) response.errorBody()!!
+                                                                                .string() else null,
+                                                                            applicationContext
+                                                                        ),
+                                                                        Toast.LENGTH_LONG
+                                                                    ).show()
+                                                                }
+                                                                relativeLayoutLoading.visibility =
+                                                                    View.GONE
                                                             }
-                                                            .setNegativeButton("Não") { _, _ ->
+
+                                                            override fun onFailure(
+                                                                call: Call<Void?>,
+                                                                t: Throwable
+                                                            ) {
+                                                                relativeLayoutLoading.visibility =
+                                                                    View.GONE
+                                                                t.printStackTrace()
                                                                 Toast.makeText(
                                                                     applicationContext,
-                                                                    "ERRO: $error",
+                                                                    R.string.service_failure,
                                                                     Toast.LENGTH_LONG
                                                                 ).show()
                                                             }
-                                                            .create()
-                                                    dialogErro.show()
-
+                                                        })
                                                     relativeLayoutLoading.visibility = View.GONE
                                                 } else {
                                                     sendData(
@@ -483,6 +481,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
+    fun getPackageInfo(): PackageInfo {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            packageManager.getPackageInfo(packageName, 0)
+        }
+    }
+
     fun sendData(
         camera: Camera,
         editor: Editor,
@@ -511,6 +518,7 @@ class MainActivity : AppCompatActivity() {
                         ).show()
                     } else {
                         editor.putString("chave", camera.chaveVaxtor)
+                        editor.putString("chave_lprfiscal", camera.chaveLprFiscal)
                         editor.putLong("camera", camera.id)
                         editor.apply()
 
