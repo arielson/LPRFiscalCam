@@ -542,13 +542,14 @@ class CameraActivity : AppCompatActivity() {
                                         var veiculoBitmap =
                                             Utilities.bitmapFromImagePojo(imagePOJO!!)!!
 
-                                        if (veiculo.pendencia?.contains("Roubo_e_Furto") == true) {
-                                            val veiculoImage =
-                                                Utilities.getScaledImage(veiculoBitmap, 640, 480)
-                                            val veiculoImageBase64 =
-                                                Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
-                                            veiculo.foto2 = veiculoImageBase64
-                                        }
+//                                        if (veiculo.pendencia?.contains("Roubo_e_Furto") == true) {
+//
+//                                        }
+                                        val veiculoImage =
+                                            Utilities.getScaledImage(veiculoBitmap, 640, 480)
+                                        val veiculoImageBase64 =
+                                            Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
+                                        veiculo.foto2 = veiculoImageBase64
 
                                         val plateBox = it._plate_info?._plate_bounding_box!!
                                         val plateRect =
