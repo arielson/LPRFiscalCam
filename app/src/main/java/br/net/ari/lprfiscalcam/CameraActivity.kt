@@ -708,7 +708,9 @@ class CameraActivity : AppCompatActivity() {
 
     private fun onYuvImage(image: ImagePOJO) {
         try {
-            recognizeYuvImage(image)
+            val ocrId = manager.ocrId ?: -111
+            if (ocrId > 0)
+                recognizeYuvImage(image)
         } catch (e: Exception) {
             Toast.makeText(applicationContext, "Erro: $e", Toast.LENGTH_SHORT)
                 .show()
