@@ -1,12 +1,15 @@
 package br.net.ari.lprfiscalcam
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.app.Dialog
 import android.content.*
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.hardware.camera2.*
+import android.media.MediaPlayer
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
@@ -17,6 +20,7 @@ import android.util.Base64
 import android.util.Log
 import android.util.Size
 import android.view.Surface
+import android.view.Window
 import android.view.WindowManager
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
@@ -125,10 +129,28 @@ class CameraActivity : AppCompatActivity() {
         )
     }
 
-    @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
+    @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests", "DiscouragedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
+
+        val activity = this
+
+        val vezesTotal = 5
+        var vezesTocada = 0
+        val resID = resources.getIdentifier(
+            "sirene", "raw",
+            packageName
+        )
+
+        val mediaPlayer = MediaPlayer.create(activity, resID)
+        mediaPlayer.setOnCompletionListener {
+            vezesTocada++
+            if (vezesTocada < vezesTotal)
+                mediaPlayer.start()
+            else
+                vezesTocada = 0
+        }
 
         PermissionUtils.requestPermission(this, PermissionUtils.cameraPermissions)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
@@ -528,86 +550,96 @@ class CameraActivity : AppCompatActivity() {
                                     textViewPlateLog.text =
                                         Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
 
-                                    if (it._source_image != null) {
-                                        val imagePOJO = Utilities.mapImagePOJO(
-                                            ImageInfoPOJO(
-                                                _format = it._source_image!!._format,
-                                                _height = it._source_image!!._height,
-                                                _width = it._source_image!!._width,
-                                                _image = it._source_image!!._image,
-                                                _size = it._source_image!!._size
-                                            )
-                                        )
-
-                                        var veiculoBitmap =
-                                            Utilities.bitmapFromImagePojo(imagePOJO!!)!!
-
-//                                        if (veiculo.pendencia?.contains("Roubo_e_Furto") == true) {
-//
-//                                        }
-                                        val veiculoImage =
-                                            Utilities.getScaledImage(veiculoBitmap, 640, 480)
-                                        val veiculoImageBase64 =
-                                            Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
-                                        veiculo.foto2 = veiculoImageBase64
-
-                                        val plateBox = it._plate_info?._plate_bounding_box!!
-                                        val plateRect =
-                                            Rect(plateBox[0], plateBox[1], plateBox[2], plateBox[3])
-                                        veiculoBitmap = Utilities.bitmapFromImagePojo(imagePOJO)!!
-                                        val plateBitamap = Utilities.cropBitmap(
-                                            veiculoBitmap,
-                                            plateRect
-                                        )
-                                        val byteArrayOutputStream = ByteArrayOutputStream()
-                                        plateBitamap.compress(
-                                            Bitmap.CompressFormat.JPEG,
-                                            100,
-                                            byteArrayOutputStream
-                                        )
-                                        val byteArray: ByteArray =
-                                            byteArrayOutputStream.toByteArray()
-                                        val plateImageBase64 =
-                                            Base64.encodeToString(byteArray, Base64.NO_WRAP)
-                                        veiculo.foto1 = plateImageBase64
+                                    if (veiculo.pendencia?.contains("Roubo_e_Furto") == true) {
+                                        mediaPlayer.start()
+                                        showDialog(activity, plate)
                                     }
-                                    Utilities.service().postVeiculo(veiculo)
-                                        .enqueue(object : Callback<String?> {
-                                            override fun onResponse(
-                                                call: Call<String?>,
-                                                response: Response<String?>
-                                            ) {
-                                                if (!response.isSuccessful) {
-                                                    try {
-                                                        Toast.makeText(
-                                                            applicationContext,
-                                                            Utilities.analiseException(
-                                                                response.code(),
-                                                                response.raw().toString(),
-                                                                if (response.errorBody() != null) response.errorBody()!!
-                                                                    .string() else null,
-                                                                applicationContext
-                                                            ),
-                                                            Toast.LENGTH_LONG
-                                                        ).show()
-                                                    } catch (e: IOException) {
-                                                        e.printStackTrace()
+
+                                    Thread {
+                                        if (it._source_image != null) {
+                                            val imagePOJO = Utilities.mapImagePOJO(
+                                                ImageInfoPOJO(
+                                                    _format = it._source_image!!._format,
+                                                    _height = it._source_image!!._height,
+                                                    _width = it._source_image!!._width,
+                                                    _image = it._source_image!!._image,
+                                                    _size = it._source_image!!._size
+                                                )
+                                            )
+
+                                            var veiculoBitmap =
+                                                Utilities.bitmapFromImagePojo(imagePOJO!!)!!
+
+                                            val veiculoImage =
+                                                Utilities.getScaledImage(veiculoBitmap, 640, 480)
+                                            val veiculoImageBase64 =
+                                                Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
+                                            veiculo.foto2 = veiculoImageBase64
+
+                                            val plateBox = it._plate_info?._plate_bounding_box!!
+                                            val plateRect =
+                                                Rect(
+                                                    plateBox[0],
+                                                    plateBox[1],
+                                                    plateBox[2],
+                                                    plateBox[3]
+                                                )
+                                            veiculoBitmap =
+                                                Utilities.bitmapFromImagePojo(imagePOJO)!!
+                                            val plateBitamap = Utilities.cropBitmap(
+                                                veiculoBitmap,
+                                                plateRect
+                                            )
+                                            val byteArrayOutputStream = ByteArrayOutputStream()
+                                            plateBitamap.compress(
+                                                Bitmap.CompressFormat.JPEG,
+                                                100,
+                                                byteArrayOutputStream
+                                            )
+                                            val byteArray: ByteArray =
+                                                byteArrayOutputStream.toByteArray()
+                                            val plateImageBase64 =
+                                                Base64.encodeToString(byteArray, Base64.NO_WRAP)
+                                            veiculo.foto1 = plateImageBase64
+                                        }
+                                        Utilities.service().postVeiculo(veiculo)
+                                            .enqueue(object : Callback<String?> {
+                                                override fun onResponse(
+                                                    call: Call<String?>,
+                                                    response: Response<String?>
+                                                ) {
+                                                    if (!response.isSuccessful) {
+                                                        try {
+                                                            Toast.makeText(
+                                                                applicationContext,
+                                                                Utilities.analiseException(
+                                                                    response.code(),
+                                                                    response.raw().toString(),
+                                                                    if (response.errorBody() != null) response.errorBody()!!
+                                                                        .string() else null,
+                                                                    applicationContext
+                                                                ),
+                                                                Toast.LENGTH_LONG
+                                                            ).show()
+                                                        } catch (e: IOException) {
+                                                            e.printStackTrace()
+                                                        }
                                                     }
                                                 }
-                                            }
 
-                                            override fun onFailure(
-                                                call: Call<String?>,
-                                                t: Throwable
-                                            ) {
-                                                t.printStackTrace()
-                                                Toast.makeText(
-                                                    applicationContext,
-                                                    "Erro ao acessar servidor. Verifique internet.",
-                                                    Toast.LENGTH_LONG
-                                                ).show()
-                                            }
-                                        })
+                                                override fun onFailure(
+                                                    call: Call<String?>,
+                                                    t: Throwable
+                                                ) {
+                                                    t.printStackTrace()
+                                                    Toast.makeText(
+                                                        applicationContext,
+                                                        "Erro ao acessar servidor. Verifique internet.",
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
+                                                }
+                                            })
+                                    }.start()
                                 } else {
                                     logText =
                                         "<font color=#5EBA7D>* $plate - OK</font><br><br>${logText}\n"
@@ -797,5 +829,19 @@ class CameraActivity : AppCompatActivity() {
                         .show()
                 }
             })
+    }
+
+    private fun showDialog(activity: Activity, info: String?) {
+        val dialog = Dialog(activity)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setCancelable(false)
+        dialog.setContentView(R.layout.dialog_custom_layout)
+        val textViewInfo = dialog.findViewById(R.id.textViewInfo) as TextView
+        textViewInfo.text = info
+        val buttonFechar = dialog.findViewById(R.id.buttonFechar) as Button
+        buttonFechar.setOnClickListener {
+            dialog.dismiss()
+        }
+        dialog.show()
     }
 }
