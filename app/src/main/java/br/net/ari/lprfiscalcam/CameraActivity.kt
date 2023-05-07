@@ -76,6 +76,9 @@ class CameraActivity : AppCompatActivity() {
     private val cameraExecutor by lazy { Executors.newSingleThreadExecutor() }
     private var cameraControl: CameraControl? = null
     private var cameraInfo: CameraInfo? = null
+    private var cameraManager: CameraManager? = null
+    private var cameraCharacteristics: CameraCharacteristics? = null
+    private var camCharacteristics: IntArray? = null
 
     private lateinit var textViewTemperature: TextView
     private var intentfilter: IntentFilter? = null
@@ -279,7 +282,6 @@ class CameraActivity : AppCompatActivity() {
             )
 
             initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
-
             if (initOcr == -1L) {
                 Toast.makeText(
                     applicationContext,
@@ -395,7 +397,22 @@ class CameraActivity : AppCompatActivity() {
             cameraProviderFuture.addListener({
                 cameraProvider = cameraProviderFuture.get()
 
-                val sizeRotated = Size(1920, 1080)
+                cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+                if (cameraManager != null) {
+                    cameraCharacteristics = cameraManager?.getCameraCharacteristics(cameraManager!!.cameraIdList[0])
+                    camCharacteristics =
+                        cameraCharacteristics?.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+                }
+
+//                var sizes: Array<Size>? = null
+//                cameraCharacteristics?.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+//                    ?.let { streamConfigurationMap ->
+//                        streamConfigurationMap.getOutputSizes(android.graphics.ImageFormat.YUV_420_888)?.let { yuvSizes ->
+//                            sizes = yuvSizes
+//                        }
+//                    }
+
+                val sizeRotated = Size(resources.displayMetrics.widthPixels, resources.displayMetrics.heightPixels)// sizes!!.first() //Size(1920, 1080)//
 
                 val preview = Preview.Builder()
                     .setTargetResolution(sizeRotated)
@@ -713,17 +730,12 @@ class CameraActivity : AppCompatActivity() {
     @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
     fun loadFocus() {
         if (cameraControl != null) {
-            val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-            if (cameraManager.cameraIdList.isNotEmpty()) {
-                val cameraCharacteristics =
-                    cameraManager.getCameraCharacteristics(cameraManager.cameraIdList[0])
-                val camCharacteristics =
-                    cameraCharacteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+            if (cameraManager != null && cameraManager!!.cameraIdList.isNotEmpty()) {
                 val isManualFocus =
                     camCharacteristics?.any { it == CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR }
                 if (isManualFocus == true) {
                     minimumLens =
-                        cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
+                        cameraCharacteristics?.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
                     val camera2CameraControl: Camera2CameraControl =
                         Camera2CameraControl.from(cameraControl!!)
                     val captureRequestOptions = CaptureRequestOptions.Builder()
@@ -749,7 +761,7 @@ class CameraActivity : AppCompatActivity() {
             Log.e("Erro", "onYuvImage $e")
         }
     }
-
+    
     private fun recognizeYuvImage(imagePOJO: ImagePOJO) {
         val ocrId = manager.ocrId ?: -111
         if (ocrId < 0) throw Exception("Can't recognize Image. Ocr init code  = $ocrId")
