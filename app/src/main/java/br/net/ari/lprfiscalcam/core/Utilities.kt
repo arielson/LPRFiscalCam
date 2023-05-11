@@ -164,7 +164,6 @@ object Utilities {
         }
     }
 
-
     fun getDeviceName(): String {
         val manufacturer = Build.MANUFACTURER
         val model = Build.MODEL
@@ -174,7 +173,6 @@ object Utilities {
             capitalize(manufacturer) + " " + model
         }
     }
-
 
     private fun capitalize(s: String?): String {
         if (s == null || s.isEmpty()) {
@@ -206,5 +204,9 @@ object Utilities {
         }
 
         return "#000000"
+    }
+
+    fun greatestCommonFactor(width: Int, height: Int): Int {
+        return if (height == 0) width else greatestCommonFactor(height, width % height)
     }
 }

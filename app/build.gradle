@@ -14,8 +14,8 @@ android {
         applicationId "br.net.ari.lprfiscalcam"
         minSdk 29
         targetSdk 33
-        versionCode 15
-        versionName "1.0.14"
+        versionCode 16
+        versionName "1.0.15"
 
         multiDexEnabled true
 

@@ -50,6 +50,7 @@ import com.vaxtor.alprlib.VaxtorAlprManager
 import com.vaxtor.alprlib.VaxtorLicensingManager
 import com.vaxtor.alprlib.arguments.OcrFindPlatesImageArgs
 import com.vaxtor.alprlib.arguments.OcrInitialiseArgs
+import com.vaxtor.alprlib.data.EventPlateInfo
 import com.vaxtor.alprlib.enums.OperMode
 import retrofit2.Call
 import retrofit2.Callback
@@ -58,6 +59,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.Executors
 
@@ -96,6 +98,8 @@ class CameraActivity : AppCompatActivity() {
     private lateinit var locationCallback: LocationCallback
     private var latitude: Double? = null
     private var longitude: Double? = null
+
+    private var logText = ""
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -393,13 +397,15 @@ class CameraActivity : AppCompatActivity() {
                     ).show()
                 }
             }
+
             val cameraProviderFuture = ProcessCameraProvider.getInstance(this.applicationContext)
             cameraProviderFuture.addListener({
                 cameraProvider = cameraProviderFuture.get()
 
                 cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
                 if (cameraManager != null) {
-                    cameraCharacteristics = cameraManager?.getCameraCharacteristics(cameraManager!!.cameraIdList[0])
+                    cameraCharacteristics =
+                        cameraManager?.getCameraCharacteristics(cameraManager!!.cameraIdList[0])
                     camCharacteristics =
                         cameraCharacteristics?.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
                 }
@@ -412,7 +418,19 @@ class CameraActivity : AppCompatActivity() {
 //                        }
 //                    }
 
-                val sizeRotated = Size(resources.displayMetrics.widthPixels, resources.displayMetrics.heightPixels)// sizes!!.first() //Size(1920, 1080)//
+                val factor = Utilities.greatestCommonFactor(
+                    resources.displayMetrics.widthPixels,
+                    resources.displayMetrics.heightPixels
+                )
+                var widthRatio = resources.displayMetrics.widthPixels / factor
+                var heightRatio = resources.displayMetrics.heightPixels / factor
+
+                while (widthRatio < 1280) {
+                    widthRatio = (widthRatio * 1.5).toInt()
+                    heightRatio = (heightRatio * 1.5).toInt()
+                }
+
+                val sizeRotated = Size(widthRatio, heightRatio)
 
                 val preview = Preview.Builder()
                     .setTargetResolution(sizeRotated)
@@ -534,163 +552,186 @@ class CameraActivity : AppCompatActivity() {
                 }
             }, ContextCompat.getMainExecutor(this.applicationContext))
 
-            var logText = ""
             manager.eventPlateInfoCallback = { it ->
                 val plate = it._plate_info?._plate_number_asciivar
-                Log.d("Placa:", "$plate")
+                sendPlate(it, plate, textViewPlateLog, mediaPlayer, activity)
 
-                val cameraId = sharedPreference.getLong("camera", 0)
-                val veiculoInput = Veiculo()
-                veiculoInput.placa = plate
-                veiculoInput.fiscalizacaoId = fiscalizacao.id
-                veiculoInput.dispositivo = Utilities.getDeviceName()
-                veiculoInput.cameraId = cameraId
-                veiculoInput.latitude = latitude
-                veiculoInput.longitude = longitude
-                Utilities.service()
-                    .setVeiculo(veiculoInput)
-                    .enqueue(object : Callback<Veiculo?> {
-                        override fun onResponse(
-                            call: Call<Veiculo?>,
-                            response: Response<Veiculo?>
-                        ) {
-                            if (response.isSuccessful && response.body() != null) {
-                                val veiculo: Veiculo? = response.body()
-                                veiculo?.cameraId = cameraId
-                                veiculo?.placa = plate
-                                val confPerc = it._plate_info?._plate_read_confidence?.div(100.0)
-                                veiculo?.confianca = confPerc
-                                veiculo?.dispositivo = Utilities.getDeviceName()
-                                if (veiculo?.id!! > 0) {
-                                    logText =
-                                        "<font color=${Utilities.colorByStatus(veiculo.pendencia)}>* $plate - ${veiculo.pendencia}</font><br><br>${logText}\n"
-                                    textViewPlateLog.text =
-                                        Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
+                if (plate?.get(4) == 'I') {
+                    val chars = plate.toCharArray()
+                    chars[4] = '1'
+                    val newPlate = String(chars)
 
-                                    if (veiculo.pendencia?.contains("Roubo_e_Furto") == true) {
-                                        mediaPlayer.start()
-                                        showDialog(activity, plate)
-                                    }
-
-                                    Thread {
-                                        if (it._source_image != null) {
-                                            val imagePOJO = Utilities.mapImagePOJO(
-                                                ImageInfoPOJO(
-                                                    _format = it._source_image!!._format,
-                                                    _height = it._source_image!!._height,
-                                                    _width = it._source_image!!._width,
-                                                    _image = it._source_image!!._image,
-                                                    _size = it._source_image!!._size
-                                                )
-                                            )
-
-                                            var veiculoBitmap =
-                                                Utilities.bitmapFromImagePojo(imagePOJO!!)!!
-
-                                            val veiculoImage =
-                                                Utilities.getScaledImage(veiculoBitmap, 640, 480)
-                                            val veiculoImageBase64 =
-                                                Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
-                                            veiculo.foto2 = veiculoImageBase64
-
-                                            val plateBox = it._plate_info?._plate_bounding_box!!
-                                            val plateRect =
-                                                Rect(
-                                                    plateBox[0],
-                                                    plateBox[1],
-                                                    plateBox[2],
-                                                    plateBox[3]
-                                                )
-                                            veiculoBitmap =
-                                                Utilities.bitmapFromImagePojo(imagePOJO)!!
-                                            val plateBitamap = Utilities.cropBitmap(
-                                                veiculoBitmap,
-                                                plateRect
-                                            )
-                                            val byteArrayOutputStream = ByteArrayOutputStream()
-                                            plateBitamap.compress(
-                                                Bitmap.CompressFormat.JPEG,
-                                                100,
-                                                byteArrayOutputStream
-                                            )
-                                            val byteArray: ByteArray =
-                                                byteArrayOutputStream.toByteArray()
-                                            val plateImageBase64 =
-                                                Base64.encodeToString(byteArray, Base64.NO_WRAP)
-                                            veiculo.foto1 = plateImageBase64
-                                        }
-                                        Utilities.service().postVeiculo(veiculo)
-                                            .enqueue(object : Callback<String?> {
-                                                override fun onResponse(
-                                                    call: Call<String?>,
-                                                    response: Response<String?>
-                                                ) {
-                                                    if (!response.isSuccessful) {
-                                                        try {
-                                                            Toast.makeText(
-                                                                applicationContext,
-                                                                Utilities.analiseException(
-                                                                    response.code(),
-                                                                    response.raw().toString(),
-                                                                    if (response.errorBody() != null) response.errorBody()!!
-                                                                        .string() else null,
-                                                                    applicationContext
-                                                                ),
-                                                                Toast.LENGTH_LONG
-                                                            ).show()
-                                                        } catch (e: IOException) {
-                                                            e.printStackTrace()
-                                                        }
-                                                    }
-                                                }
-
-                                                override fun onFailure(
-                                                    call: Call<String?>,
-                                                    t: Throwable
-                                                ) {
-                                                    t.printStackTrace()
-                                                    Toast.makeText(
-                                                        applicationContext,
-                                                        "Erro ao acessar servidor. Verifique internet.",
-                                                        Toast.LENGTH_LONG
-                                                    ).show()
-                                                }
-                                            })
-                                    }.start()
-                                } else {
-                                    logText =
-                                        "<font color=#5EBA7D>* $plate - OK</font><br><br>${logText}\n"
-                                    textViewPlateLog.text =
-                                        Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
-                                }
-                            } else {
-                                Toast.makeText(
-                                    applicationContext,
-                                    Utilities.analiseException(
-                                        response.code(),
-                                        response.raw().toString(),
-                                        if (response.errorBody() != null) response.errorBody()!!
-                                            .string() else null,
-                                        applicationContext
-                                    ),
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                        }
-
-                        override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
-                            t.printStackTrace()
-                            Toast.makeText(
-                                applicationContext,
-                                R.string.service_failure,
-                                Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    })
+                    sendPlate(it, newPlate, textViewPlateLog, mediaPlayer, activity)
+                }
             }
         } catch (e: IOException) {
             throw RuntimeException(e)
         }
+    }
+
+    private fun sendPlate(
+        it: EventPlateInfo,
+        plate: String?,
+        textViewPlateLog: TextView,
+        mediaPlayer: MediaPlayer,
+        activity: Activity
+    ) {
+        Log.d("Placa:", "$plate")
+
+        val cameraId = sharedPreference.getLong("camera", 0)
+        val veiculoInput = Veiculo()
+        veiculoInput.placa = plate
+        veiculoInput.fiscalizacaoId = fiscalizacao.id
+        veiculoInput.dispositivo = Utilities.getDeviceName()
+        veiculoInput.cameraId = cameraId
+        veiculoInput.latitude = latitude
+        veiculoInput.longitude = longitude
+        Utilities.service()
+            .setVeiculo(veiculoInput)
+            .enqueue(object : Callback<Veiculo?> {
+                override fun onResponse(
+                    call: Call<Veiculo?>,
+                    response: Response<Veiculo?>
+                ) {
+                    if (response.isSuccessful && response.body() != null) {
+                        val veiculo: Veiculo? = response.body()
+                        veiculo?.cameraId = cameraId
+                        veiculo?.placa = plate
+                        val confPerc = it._plate_info?._plate_read_confidence?.div(100.0)
+                        veiculo?.confianca = confPerc
+                        veiculo?.dispositivo = Utilities.getDeviceName()
+                        if (veiculo?.id!! > 0) {
+                            logText =
+                                "<font color=${Utilities.colorByStatus(veiculo.pendencia)}>* $plate - ${veiculo.pendencia}</font><br><br>${logText}\n"
+                            textViewPlateLog.text =
+                                Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
+
+                            if (veiculo.pendencia?.contains("Roubo_e_Furto") == true) {
+                                mediaPlayer.start()
+                                showDialog(
+                                    activity,
+                                    "${veiculo.marcaModelo}<br><font color=${
+                                        Utilities.colorByStatus(veiculo.pendencia)
+                                    }>$plate</font>"
+                                )
+                            }
+
+                            Thread {
+                                if (it._source_image != null) {
+                                    val imagePOJO = Utilities.mapImagePOJO(
+                                        ImageInfoPOJO(
+                                            _format = it._source_image!!._format,
+                                            _height = it._source_image!!._height,
+                                            _width = it._source_image!!._width,
+                                            _image = it._source_image!!._image,
+                                            _size = it._source_image!!._size
+                                        )
+                                    )
+
+                                    var veiculoBitmap =
+                                        Utilities.bitmapFromImagePojo(imagePOJO!!)!!
+
+                                    val veiculoImage =
+                                        Utilities.getScaledImage(veiculoBitmap, 640, 480)
+                                    val veiculoImageBase64 =
+                                        Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
+                                    veiculo.foto2 = veiculoImageBase64
+
+                                    val plateBox = it._plate_info?._plate_bounding_box!!
+                                    val plateRect =
+                                        Rect(
+                                            plateBox[0],
+                                            plateBox[1],
+                                            plateBox[2],
+                                            plateBox[3]
+                                        )
+                                    veiculoBitmap =
+                                        Utilities.bitmapFromImagePojo(imagePOJO)!!
+                                    val plateBitamap = Utilities.cropBitmap(
+                                        veiculoBitmap,
+                                        plateRect
+                                    )
+                                    val byteArrayOutputStream = ByteArrayOutputStream()
+                                    plateBitamap.compress(
+                                        Bitmap.CompressFormat.JPEG,
+                                        100,
+                                        byteArrayOutputStream
+                                    )
+                                    val byteArray: ByteArray =
+                                        byteArrayOutputStream.toByteArray()
+                                    val plateImageBase64 =
+                                        Base64.encodeToString(byteArray, Base64.NO_WRAP)
+                                    veiculo.foto1 = plateImageBase64
+                                }
+
+                                Utilities.service().postVeiculo(veiculo)
+                                    .enqueue(object : Callback<String?> {
+                                        override fun onResponse(
+                                            call: Call<String?>,
+                                            response: Response<String?>
+                                        ) {
+                                            if (!response.isSuccessful) {
+                                                try {
+                                                    Toast.makeText(
+                                                        applicationContext,
+                                                        Utilities.analiseException(
+                                                            response.code(),
+                                                            response.raw().toString(),
+                                                            if (response.errorBody() != null) response.errorBody()!!
+                                                                .string() else null,
+                                                            applicationContext
+                                                        ),
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
+                                                } catch (e: IOException) {
+                                                    e.printStackTrace()
+                                                }
+                                            }
+                                        }
+
+                                        override fun onFailure(
+                                            call: Call<String?>,
+                                            t: Throwable
+                                        ) {
+                                            t.printStackTrace()
+                                            Toast.makeText(
+                                                applicationContext,
+                                                "Erro ao acessar servidor. Verifique internet.",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        }
+                                    })
+                            }.start()
+                        } else {
+                            logText =
+                                "<font color=#5EBA7D>* $plate - OK</font><br><br>${logText}\n"
+                            textViewPlateLog.text =
+                                Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
+                        }
+                    } else {
+                        Toast.makeText(
+                            applicationContext,
+                            Utilities.analiseException(
+                                response.code(),
+                                response.raw().toString(),
+                                if (response.errorBody() != null) response.errorBody()!!
+                                    .string() else null,
+                                applicationContext
+                            ),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+
+                override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
+                    t.printStackTrace()
+                    Toast.makeText(
+                        applicationContext,
+                        R.string.service_failure,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            })
     }
 
     private fun loadBrilhoData(): Boolean {
@@ -761,14 +802,17 @@ class CameraActivity : AppCompatActivity() {
             Log.e("Erro", "onYuvImage $e")
         }
     }
-    
+
     private fun recognizeYuvImage(imagePOJO: ImagePOJO) {
         val ocrId = manager.ocrId ?: -111
         if (ocrId < 0) throw Exception("Can't recognize Image. Ocr init code  = $ocrId")
 
         manager.ocrApplyImageRotation(imagePOJO.rotationDegrees)
 
-        if (imagePOJO.imageFormat == ImageFormat.YUV)
+        if (imagePOJO.imageFormat == ImageFormat.YUV) {
+            val sdf = SimpleDateFormat("dd/M/yyyy hh:mm:ss", Locale.getDefault())
+            val currentDate = sdf.format(Date())
+            Log.d("recognizeYuvImage", "$currentDate - PASSOU")
             manager.ocrFindPlatesYUV(
                 OcrFindPlatesImageArgs(
                     id = ocrId,
@@ -777,7 +821,7 @@ class CameraActivity : AppCompatActivity() {
                     image_height = imagePOJO.height.toLong()
                 )
             )
-        else if (imagePOJO.imageFormat == ImageFormat.JPEG)
+        } else if (imagePOJO.imageFormat == ImageFormat.JPEG)
             manager.ocrFindPlatesJPEG(imagePOJO.src)
     }
 
@@ -848,8 +892,12 @@ class CameraActivity : AppCompatActivity() {
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setCancelable(false)
         dialog.setContentView(R.layout.dialog_custom_layout)
+        dialog.window?.setLayout(
+            (activity.resources.displayMetrics.widthPixels * 0.8).toInt(),
+            (activity.resources.displayMetrics.heightPixels * 0.8).toInt()
+        )
         val textViewInfo = dialog.findViewById(R.id.textViewInfo) as TextView
-        textViewInfo.text = info
+        textViewInfo.text = Html.fromHtml(info, Html.FROM_HTML_MODE_LEGACY)
         val buttonFechar = dialog.findViewById(R.id.buttonFechar) as Button
         buttonFechar.setOnClickListener {
             dialog.dismiss()
