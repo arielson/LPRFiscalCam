@@ -46,6 +46,10 @@ android {
     buildFeatures {
         viewBinding true
     }
+
+    androidResources {
+        noCompress 'tflite'
+    }
 }
 
 dependencies {
@@ -64,13 +68,6 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-scalars:2.9.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.10.0'
 
-    implementation 'com.github.Vaxtor-Technologies:VaxtorLprSDK:3.0.0'
-
-    implementation platform('com.google.firebase:firebase-bom:31.2.3')
-    implementation 'com.google.firebase:firebase-analytics-ktx'
-    implementation 'com.google.firebase:firebase-crashlytics-ktx'
-    implementation 'com.google.firebase:firebase-analytics-ktx'
-
     def camerax_version = "1.2.3"
     implementation "androidx.camera:camera-core:${camerax_version}"
     implementation "androidx.camera:camera-camera2:${camerax_version}"
@@ -80,4 +77,9 @@ dependencies {
     implementation 'com.github.jiangdongguo.AndroidUSBCamera:libausbc:3.3.3'
 
     implementation 'com.google.android.gms:play-services-location:21.0.1'
+
+    implementation 'org.tensorflow:tensorflow-lite-task-vision-play-services:0.4.2'
+    implementation 'com.google.android.gms:play-services-tflite-gpu:16.2.0'
+
+    implementation 'com.google.mlkit:text-recognition:16.0.0'
 }

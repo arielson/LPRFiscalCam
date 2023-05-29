@@ -1,11 +1,15 @@
 package br.net.ari.lprfiscalcam.core
 
+import android.app.Activity
+import android.app.Dialog
 import android.content.Context
 import android.graphics.*
 import android.os.Build
+import android.text.Html
+import android.view.Window
+import android.widget.Button
+import android.widget.TextView
 import br.net.ari.lprfiscalcam.R
-import br.net.ari.lprfiscalcam.data.ImageInfoPOJO
-import br.net.ari.lprfiscalcam.data.ImagePOJO
 import br.net.ari.lprfiscalcam.interfaces.APIService
 import br.net.ari.lprfiscalcam.models.Cliente
 import com.google.gson.GsonBuilder
@@ -19,6 +23,8 @@ import retrofit2.converter.scalars.ScalarsConverterFactory
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.time.Duration
+import java.time.LocalDateTime
 import java.util.concurrent.TimeUnit
 
 
@@ -67,49 +73,49 @@ object Utilities {
         return service as APIService
     }
 
-    fun mapImagePOJO(sourceImage: ImageInfoPOJO?): ImagePOJO? {
-        val width = sourceImage?._width?.toInt()
-        val height = sourceImage?._height?.toInt()
-        val image = sourceImage?._image
-        val format = br.net.ari.lprfiscalcam.enums.ImageFormat.getFormat(sourceImage?._format?.toInt() ?: -1)
-        return if (width != null && height != null && image != null && format != null)
-            ImagePOJO(
-                width = width,
-                height = height,
-                src = image,
-                rotationDegrees = 0,
-                imageFormat = format
-            )
-        else null
-    }
+//    fun mapImagePOJO(sourceImage: ImageInfoPOJO?): ImagePOJO? {
+//        val width = sourceImage?._width?.toInt()
+//        val height = sourceImage?._height?.toInt()
+//        val image = sourceImage?._image
+//        val format = br.net.ari.lprfiscalcam.enums.ImageFormat.getFormat(sourceImage?._format?.toInt() ?: -1)
+//        return if (width != null && height != null && image != null && format != null)
+//            ImagePOJO(
+//                width = width,
+//                height = height,
+//                src = image,
+//                rotationDegrees = 0,
+//                imageFormat = format
+//            )
+//        else null
+//    }
+//
+//    fun bitmapFromImagePojo(imagePOJO: ImagePOJO): Bitmap? = when (imagePOJO.imageFormat) {
+//        br.net.ari.lprfiscalcam.enums.ImageFormat.RGB -> {
+//            val src = imagePOJO.src
+//            val pix = IntArray(src.size / 3) { i ->
+//                val a = 0xff
+//                val r = (0xFF and src[3 * i].toInt())
+//                val g = (0xFF and src[3 * i + 1].toInt())
+//                val b = (0xFF and src[3 * i + 2].toInt())
+//                Color.argb(a, r, g, b)
+//            }
+//            Bitmap.createBitmap(pix, imagePOJO.width, imagePOJO.height, Bitmap.Config.ARGB_8888)
+//        }
+//        br.net.ari.lprfiscalcam.enums.ImageFormat.JPEG -> {
+//            imagePOJO.src.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+//        }
+//        br.net.ari.lprfiscalcam.enums.ImageFormat.YUV -> {
+//            val yuvImage =
+//                YuvImage(imagePOJO.src, ImageFormat.NV21, imagePOJO.width, imagePOJO.height, null)
+//            val out = ByteArrayOutputStream()
+//            yuvImage.compressToJpeg(Rect(0, 0, yuvImage.width, yuvImage.height), 100, out)
+//            out.toByteArray().let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+//        }
+//        else -> throw Exception("can't create from ${imagePOJO.imageFormat}")
+//    }
 
-    fun bitmapFromImagePojo(imagePOJO: ImagePOJO): Bitmap? = when (imagePOJO.imageFormat) {
-        br.net.ari.lprfiscalcam.enums.ImageFormat.RGB -> {
-            val src = imagePOJO.src
-            val pix = IntArray(src.size / 3) { i ->
-                val a = 0xff
-                val r = (0xFF and src[3 * i].toInt())
-                val g = (0xFF and src[3 * i + 1].toInt())
-                val b = (0xFF and src[3 * i + 2].toInt())
-                Color.argb(a, r, g, b)
-            }
-            Bitmap.createBitmap(pix, imagePOJO.width, imagePOJO.height, Bitmap.Config.ARGB_8888)
-        }
-        br.net.ari.lprfiscalcam.enums.ImageFormat.JPEG -> {
-            imagePOJO.src.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-        }
-        br.net.ari.lprfiscalcam.enums.ImageFormat.YUV -> {
-            val yuvImage =
-                YuvImage(imagePOJO.src, ImageFormat.NV21, imagePOJO.width, imagePOJO.height, null)
-            val out = ByteArrayOutputStream()
-            yuvImage.compressToJpeg(Rect(0, 0, yuvImage.width, yuvImage.height), 100, out)
-            out.toByteArray().let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-        }
-        else -> throw Exception("can't create from ${imagePOJO.imageFormat}")
-    }
-
-    fun cropBitmap(bitmap: Bitmap, rect: Rect): Bitmap =
-        Bitmap.createBitmap(bitmap, rect.left, rect.top, rect.width(), rect.height())
+    fun cropBitmap(bitmap: Bitmap, rect: RectF): Bitmap =
+        Bitmap.createBitmap(bitmap, rect.left.toInt(), rect.top.toInt(), rect.width().toInt(), rect.height().toInt())
 
     fun getScaledImage(bitmapImage: Bitmap, newWidth: Int, newHeight: Int): ByteArray? {
         val mutableBitmapImage = Bitmap.createScaledBitmap(bitmapImage, newWidth, newHeight, false)
@@ -208,5 +214,58 @@ object Utilities {
 
     fun greatestCommonFactor(width: Int, height: Int): Int {
         return if (height == 0) width else greatestCommonFactor(height, width % height)
+    }
+
+    val brasilRegex = "[A-Z]{3}\\d[A-Z0-9]{1}\\d{2}"
+
+    fun validateBrazilianLicensePlate(licensePlate: String): Boolean {
+        val regex = Regex(brasilRegex)
+
+        return regex.matches(licensePlate)
+    }
+
+    private fun getMatchedString(input: String, pattern: Regex): String? {
+        val matchResult = pattern.find(input)
+
+        return matchResult?.value
+    }
+
+    private fun removeSpecialCharacters(input: String): String {
+        val pattern = """[^a-zA-Z0-9]""".toRegex()
+
+        return pattern.replace(input, "")
+    }
+
+    fun normalizePlate(input: String): String {
+        val result = removeSpecialCharacters(input)
+        val resultMatch = getMatchedString(result, Regex(brasilRegex))
+        if (resultMatch != null)
+            return resultMatch.toString()
+
+        return ""
+    }
+
+    fun getSecondsBetweenDates(start: LocalDateTime, end: LocalDateTime): Long {
+        val duration = Duration.between(start, end)
+
+        return duration.seconds
+    }
+
+    fun showDialog(activity: Activity, info: String?) {
+        val dialog = Dialog(activity)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setCancelable(false)
+        dialog.setContentView(R.layout.dialog_custom_layout)
+        dialog.window?.setLayout(
+            (activity.resources.displayMetrics.widthPixels * 0.8).toInt(),
+            (activity.resources.displayMetrics.heightPixels * 0.8).toInt()
+        )
+        val textViewInfo = dialog.findViewById(R.id.textViewInfo) as TextView
+        textViewInfo.text = Html.fromHtml(info, Html.FROM_HTML_MODE_LEGACY)
+        val buttonFechar = dialog.findViewById(R.id.buttonFechar) as Button
+        buttonFechar.setOnClickListener {
+            dialog.dismiss()
+        }
+        dialog.show()
     }
 }

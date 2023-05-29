@@ -11,7 +11,7 @@
         android:id="@+id/viewFinder"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/white"
+        android:background="@color/black"
         android:minHeight="10dp"
         android:minWidth="10dp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -118,7 +118,7 @@
 
                 <LinearLayout
                     android:orientation="horizontal"
-                    android:layout_gravity="end"
+                    android:layout_gravity="start"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content">
 
@@ -129,8 +129,9 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="end"
                         android:text="@string/fechar"
-                        android:contentDescription="@string/app_name"
-                        android:layout_margin="8dp" />
+                        android:contentDescription="@string/fechar"
+                        android:layout_margin="8dp"
+                        style="?android:attr/buttonBarButtonStyle" />
 
                     <Button
                         android:id="@+id/buttonExit"
@@ -141,8 +142,9 @@
                         android:layout_height="50dp"
                         android:layout_gravity="end"
                         android:text="@string/sair"
-                        android:contentDescription="@string/app_name"
-                        android:layout_margin="8dp" />
+                        android:contentDescription="@string/sair"
+                        android:layout_margin="8dp"
+                        style="?android:attr/buttonBarButtonStyle" />
 
                 </LinearLayout>
 
