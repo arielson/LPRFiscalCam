@@ -16,7 +16,7 @@ import org.tensorflow.lite.task.gms.vision.detector.ObjectDetector
 
 
 class ObjectDetectorHelper (
-    private var threshold: Float = 0.8f,
+    private var threshold: Float = 0.7f,
     private var numThreads: Int = -1,
     private var maxResults: Int = 1,
     val context: Context,

@@ -452,8 +452,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                         val veiculo: Veiculo? = response.body()
                         veiculo?.cameraId = cameraId
                         veiculo?.placa = placa
-                        val confPerc = confiabilidade * 100f
-                        veiculo?.confianca = confPerc.toDouble()
+                        veiculo?.confianca = confiabilidade.toDouble()
                         veiculo?.dispositivo = Utilities.getDeviceName()
                         if (veiculo?.id!! > 0) {
                             logText =
@@ -654,8 +653,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         if (results?.any() == true) {
             val result = results.first()
             val bndbox = result.boundingBox
-            val confidence = result.categories.first().score * 100
-            Log.d("Confiabilidade", "$confidence %")
+            val confidence = result.categories.first().score
+            Log.d("Confiabilidade", "${confidence * 100} %")
             Log.d("Tempo de inferência", "$inferenceTime ms")
             var left = 0f
             if (bndbox.left > 0)

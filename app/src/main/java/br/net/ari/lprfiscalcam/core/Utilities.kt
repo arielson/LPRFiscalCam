@@ -241,6 +241,11 @@ object Utilities {
         val resultMatch = getMatchedString(result, Regex(brasilRegex))
         if (resultMatch != null)
             return resultMatch.toString()
+        else {
+            val resultMatch2 = getMatchedString(result.replace("G", "0"), Regex(brasilRegex))
+            if (resultMatch2 != null)
+                return resultMatch2.toString()
+        }
 
         return ""
     }
