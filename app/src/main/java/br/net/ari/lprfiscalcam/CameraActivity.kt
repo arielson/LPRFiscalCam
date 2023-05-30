@@ -686,8 +686,10 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
                                 placas.add(placaDTO)
 
-                                val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
-                                sendPlate(placaNormalizada, confidence, placa, veiculoBitmap)
+                                Thread {
+                                    val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
+                                    sendPlate(placaNormalizada, confidence, placa, veiculoBitmap)
+                                }.start()
                             }
                         }
                     }

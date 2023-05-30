@@ -444,6 +444,10 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack, ObjectDetector
                                 placaDTO.data = LocalDateTime.now()
 
                                 placas.add(placaDTO)
+
+                                Thread {
+
+                                }.start()
                                 val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
                                 sendPlate(placaNormalizada, confidence, placa, veiculoBitmap)
                             }

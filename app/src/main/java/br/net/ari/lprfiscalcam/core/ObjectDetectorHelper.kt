@@ -13,10 +13,11 @@ import org.tensorflow.lite.task.core.BaseOptions
 import org.tensorflow.lite.task.gms.vision.TfLiteVision
 import org.tensorflow.lite.task.gms.vision.detector.Detection
 import org.tensorflow.lite.task.gms.vision.detector.ObjectDetector
+import java.io.File
 
 
 class ObjectDetectorHelper (
-    private var threshold: Float = 0.7f,
+    private var threshold: Float = 0.8f,
     private var numThreads: Int = -1,
     private var maxResults: Int = 1,
     val context: Context,
@@ -63,11 +64,17 @@ class ObjectDetectorHelper (
 
         optionsBuilder.setBaseOptions(baseOptionsBuilder.build())
 
-        val modelName = "lprfiscal.tflite"
-
         try {
+            val modelFile =  Utilities.getFileFromAssets(context, Utilities.getSimples(Constants.b))
+            val modelTemp = Utilities.getSimples(Constants.t)
+            val selvagem = Selvagem()
+            val modelTempPath = "${modelFile.parent}/$modelTemp"
+            selvagem.dsimples(modelFile.absolutePath, modelTempPath)
+            val modelTempFile = File(modelTempPath)
+
             objectDetector =
-                ObjectDetector.createFromFileAndOptions(context, modelName, optionsBuilder.build())
+                ObjectDetector.createFromFileAndOptions(modelTempFile, optionsBuilder.build())
+            modelTempFile.delete()
         } catch (e: Exception) {
             objectDetectorListener.onError(
                 "Object detector failed to initialize. See error logs for details"

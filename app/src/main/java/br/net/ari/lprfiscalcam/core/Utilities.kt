@@ -6,6 +6,7 @@ import android.content.Context
 import android.graphics.*
 import android.os.Build
 import android.text.Html
+import android.util.Base64
 import android.view.Window
 import android.widget.Button
 import android.widget.TextView
@@ -21,6 +22,9 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.IOException
+import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Duration
@@ -72,47 +76,6 @@ object Utilities {
         }
         return service as APIService
     }
-
-//    fun mapImagePOJO(sourceImage: ImageInfoPOJO?): ImagePOJO? {
-//        val width = sourceImage?._width?.toInt()
-//        val height = sourceImage?._height?.toInt()
-//        val image = sourceImage?._image
-//        val format = br.net.ari.lprfiscalcam.enums.ImageFormat.getFormat(sourceImage?._format?.toInt() ?: -1)
-//        return if (width != null && height != null && image != null && format != null)
-//            ImagePOJO(
-//                width = width,
-//                height = height,
-//                src = image,
-//                rotationDegrees = 0,
-//                imageFormat = format
-//            )
-//        else null
-//    }
-//
-//    fun bitmapFromImagePojo(imagePOJO: ImagePOJO): Bitmap? = when (imagePOJO.imageFormat) {
-//        br.net.ari.lprfiscalcam.enums.ImageFormat.RGB -> {
-//            val src = imagePOJO.src
-//            val pix = IntArray(src.size / 3) { i ->
-//                val a = 0xff
-//                val r = (0xFF and src[3 * i].toInt())
-//                val g = (0xFF and src[3 * i + 1].toInt())
-//                val b = (0xFF and src[3 * i + 2].toInt())
-//                Color.argb(a, r, g, b)
-//            }
-//            Bitmap.createBitmap(pix, imagePOJO.width, imagePOJO.height, Bitmap.Config.ARGB_8888)
-//        }
-//        br.net.ari.lprfiscalcam.enums.ImageFormat.JPEG -> {
-//            imagePOJO.src.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-//        }
-//        br.net.ari.lprfiscalcam.enums.ImageFormat.YUV -> {
-//            val yuvImage =
-//                YuvImage(imagePOJO.src, ImageFormat.NV21, imagePOJO.width, imagePOJO.height, null)
-//            val out = ByteArrayOutputStream()
-//            yuvImage.compressToJpeg(Rect(0, 0, yuvImage.width, yuvImage.height), 100, out)
-//            out.toByteArray().let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-//        }
-//        else -> throw Exception("can't create from ${imagePOJO.imageFormat}")
-//    }
 
     fun cropBitmap(bitmap: Bitmap, rect: RectF): Bitmap =
         Bitmap.createBitmap(bitmap, rect.left.toInt(), rect.top.toInt(), rect.width().toInt(), rect.height().toInt())
@@ -272,5 +235,23 @@ object Utilities {
             dialog.dismiss()
         }
         dialog.show()
+    }
+
+    @Throws(IOException::class)
+    fun getFileFromAssets(context: Context, fileName: String): File = File(context.cacheDir, fileName)
+        .also {
+            if (!it.exists()) {
+                it.outputStream().use { cache ->
+                    context.assets.open(fileName).use { inputStream ->
+                        inputStream.copyTo(cache)
+                    }
+                }
+            }
+        }
+
+    fun getSimples(value: String): String {
+        val decodedBytes: ByteArray = Base64.decode(value, Base64.DEFAULT)
+
+        return String(decodedBytes, Charset.forName("UTF-8"))
     }
 }

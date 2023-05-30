@@ -2,18 +2,10 @@ package br.net.ari.lprfiscalcam.core
 
 class Constants {
     companion object {
-        const val OCRComplexity = 2
-        const val GrammarStrict = 1
-        const val MinGlobalConfidence = 80
-        const val MinCharacterConfidence = 70
         const val SamePlateDelay = 360
-        const val SamePlateMaxCharsDistance = 1
-        const val MaxSlopAngle = 30
-        const val BackgroundMode = 1
-        const val MinNumPlateCharacters = 7
-        const val MaxNumPlateCharacters = 7
-        const val MinCharHeight = 18
-        const val MaxCharHeight = 42
-        const val DetectMultilinePlate = 1
+        const val s = "c2VuaGExMjM3"
+        const val b = "YmluLmRhdGE="
+        const val t = "dGVtcC5kYXRh"
+        const val k = "5Qffcy8AghIWNYy2+Sh3uufDZAS2jL9JQRUqmEF4MAA="
     }
 }
