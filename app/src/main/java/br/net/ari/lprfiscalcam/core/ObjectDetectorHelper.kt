@@ -75,6 +75,8 @@ class ObjectDetectorHelper (
             objectDetector =
                 ObjectDetector.createFromFileAndOptions(modelTempFile, optionsBuilder.build())
             modelTempFile.delete()
+//            objectDetector =
+//                ObjectDetector.createFromFileAndOptions(context, "lpr-ef0.tflite", optionsBuilder.build())
         } catch (e: Exception) {
             objectDetectorListener.onError(
                 "Object detector failed to initialize. See error logs for details"

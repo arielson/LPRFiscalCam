@@ -13,6 +13,12 @@ class SplashActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash)
 
+        //Gerar arquivo simples
+//        val lprFile = Utilities.getFileFromAssets(this, "lpr-ef0.tflite")
+//        val lprFileCrypt = "${lprFile.parent}/lpr.data"
+//        val selvagem = Selvagem()
+//        selvagem.simples(lprFile.absolutePath, lprFileCrypt, "senha1237")
+
         Handler(Looper.getMainLooper()).postDelayed({
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)

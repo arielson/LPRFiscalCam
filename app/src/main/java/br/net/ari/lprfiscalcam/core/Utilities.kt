@@ -200,7 +200,9 @@ object Utilities {
     }
 
     fun normalizePlate(input: String): String {
-        val result = removeSpecialCharacters(input)
+        var result = removeSpecialCharacters(input)
+        result = result.replace("BRASIL", "")
+        result = result.replace("RASIL", "")
         val resultMatch = getMatchedString(result, Regex(brasilRegex))
         if (resultMatch != null)
             return resultMatch.toString()

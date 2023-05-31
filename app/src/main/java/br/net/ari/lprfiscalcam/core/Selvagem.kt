@@ -14,7 +14,8 @@ class Selvagem {
 //            val inputData = inputFile.readBytes()
 //
 //            val kk = generateEncryptionKey(encryptionKey, generateSalt(8))
-////            val base64String = Base64.encodeToString(kk, Base64.DEFAULT)
+//            val base64String = Base64.encodeToString(kk, Base64.DEFAULT)
+//            Log.d("SIMPLES", base64String)
 //
 //            val keySpec = SecretKeySpec(kk, "AES")
 //
