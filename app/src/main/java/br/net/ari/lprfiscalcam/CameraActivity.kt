@@ -79,6 +79,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
     private var latitude: Double? = null
     private var longitude: Double? = null
 
+    private lateinit var tesseractHelper: TesseractHelper
+
     private lateinit var objectDetectorHelper: ObjectDetectorHelper
     private lateinit var activity: AppCompatActivity
     private lateinit var bitmapBuffer: Bitmap
@@ -255,6 +257,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         objectDetectorHelper = ObjectDetectorHelper(
             context = this,
             objectDetectorListener = this)
+
+        tesseractHelper = TesseractHelper(this)
     }
 
     @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
@@ -654,8 +658,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
             val result = results.first()
             val bndbox = result.boundingBox
             val confidence = result.categories.first().score
-            Log.d("Confiabilidade", "${confidence * 100} %")
-            Log.d("Tempo de inferência", "$inferenceTime ms")
+//            Log.d("Confiabilidade", "${confidence * 100} %")
+//            Log.d("Tempo de inferência", "$inferenceTime ms")
             var left = 0f
             if (bndbox.left > 0)
                 left = bndbox.left
@@ -666,18 +670,30 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                 bndbox.left = left
                 bndbox.top = top
                 val placa = Utilities.cropBitmap(bitmap, bndbox)
+//                val placaTexto = tesseractHelper.recognizeText(placa)
+//                val placaNormalizada = Utilities.normalizePlate(placaTexto.uppercase(Locale.ROOT))
+//                if (placaNormalizada.isNotEmpty())
+//                    Log.d("PLACA", placaNormalizada)
                 val inputImage = InputImage.fromBitmap(placa, 0)
 
                 recognizer.process(inputImage)
                     .addOnSuccessListener { visionText ->
-                        val placaNormalizada = Utilities.normalizePlate(visionText.text)
-                        Log.d("PLACA NORMALIZADA", placaNormalizada)
+                        var placaTexto = ""
+                        for (textBlock in visionText.textBlocks) {
+                            for (line in textBlock.lines) {
+//                                Log.d("LINHA", "${line.text} - ${line.confidence}")
+                                if (line.confidence > 0.7f)
+                                    placaTexto += line.text
+                            }
+                        }
+//                        val placaNormalizada = Utilities.normalizePlate(visionText.text)
+                        val placaNormalizada = Utilities.normalizePlate(placaTexto)
 
                         val isBrasil = Utilities.validateBrazilianLicensePlate(placaNormalizada)
                         if (isBrasil) {
                             // validar placa de moto (2 linhas)
                             // colocar exeções I -> 1; B -> 8.... sufixo e prefixo
-                            Log.d("PLACA FINAL", placaNormalizada)
+                            Log.d("PLACA", placaNormalizada)
                             limparPlacas()
                             if (!placas.any { it.placa == placaNormalizada }) {
                                 val placaDTO = plateDTO()
