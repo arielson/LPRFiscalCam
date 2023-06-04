@@ -670,7 +670,15 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
                 recognizer.process(inputImage)
                     .addOnSuccessListener { visionText ->
-                        val placaNormalizada = Utilities.normalizePlate(visionText.text)
+                        var placaTexto = ""
+                        for (textBlock in visionText.textBlocks) {
+                            for (line in textBlock.lines) {
+//                                Log.d("LINHA", "${line.text} - ${line.confidence}")
+                                if (line.confidence > 0.65f)
+                                    placaTexto += line.text
+                            }
+                        }
+                        val placaNormalizada = Utilities.normalizePlate(placaTexto)
                         Log.d("PLACA NORMALIZADA", placaNormalizada)
 
                         val isBrasil = Utilities.validateBrazilianLicensePlate(placaNormalizada)
