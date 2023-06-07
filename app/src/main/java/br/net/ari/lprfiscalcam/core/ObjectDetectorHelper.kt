@@ -17,7 +17,6 @@ import java.io.File
 
 
 class ObjectDetectorHelper (
-    private var threshold: Float = 0.8f,
     private var numThreads: Int = -1,
     private var maxResults: Int = 1,
     val context: Context,
@@ -25,6 +24,8 @@ class ObjectDetectorHelper (
 ) {
 
     private val tag = "ObjectDetectionHelper"
+
+    private val binData: Int = 0
 
     private var objectDetector: ObjectDetector? = null
     private var gpuSupported = false
@@ -54,7 +55,7 @@ class ObjectDetectorHelper (
 
         val optionsBuilder =
             ObjectDetector.ObjectDetectorOptions.builder()
-                .setScoreThreshold(threshold)
+                .setScoreThreshold(Constants.d)
                 .setMaxResults(maxResults)
 
         val baseOptionsBuilder = BaseOptions.builder().setNumThreads(numThreads)
@@ -65,11 +66,23 @@ class ObjectDetectorHelper (
         optionsBuilder.setBaseOptions(baseOptionsBuilder.build())
 
         try {
-            val modelFile =  Utilities.getFileFromAssets(context, Utilities.getSimples(Constants.b))
+            var pass = ""
+            var model = ""
+
+            if (binData == 0) {
+                pass = Constants.k0
+                model = Constants.b0
+            } else if (binData == 1) {
+                pass = Constants.k1
+                model = Constants.b1
+            }
+
+            val modelFile =  Utilities.getFileFromAssets(context, Utilities.getSimples(model))
             val modelTemp = Utilities.getSimples(Constants.t)
             val selvagem = Selvagem()
             val modelTempPath = "${modelFile.parent}/$modelTemp"
-            selvagem.dsimples(modelFile.absolutePath, modelTempPath)
+
+            selvagem.dsimples(modelFile.absolutePath, modelTempPath, pass)
             val modelTempFile = File(modelTempPath)
 
             objectDetector =

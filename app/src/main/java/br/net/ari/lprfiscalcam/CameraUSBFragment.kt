@@ -430,12 +430,19 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack, ObjectDetector
 
                 recognizer.process(inputImage)
                     .addOnSuccessListener { visionText ->
-                        val placaNormalizada = Utilities.normalizePlate(visionText.text)
+                        var placaTexto = ""
+                        for (textBlock in visionText.textBlocks) {
+                            for (line in textBlock.lines) {
+                                Log.d("LINHA", "${line.text} - ${line.confidence}")
+                                if (line.confidence >= Constants.o)
+                                    placaTexto += line.text
+                            }
+                        }
+                        val placaNormalizada = Utilities.normalizePlate(placaTexto)
                         Log.d("PLACA NORMALIZADA", placaNormalizada)
 
                         val isBrasil = Utilities.validateBrazilianLicensePlate(placaNormalizada)
                         if (isBrasil) {
-                            // colocar exeções I -> 1; B -> 8.... sufixo e prefixo
                             Log.d("PLACA FINAL", placaNormalizada)
                             limparPlacas()
                             if (!placas.any { it.placa == placaNormalizada }) {

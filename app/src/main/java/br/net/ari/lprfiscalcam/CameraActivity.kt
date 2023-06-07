@@ -673,8 +673,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                         var placaTexto = ""
                         for (textBlock in visionText.textBlocks) {
                             for (line in textBlock.lines) {
-//                                Log.d("LINHA", "${line.text} - ${line.confidence}")
-                                if (line.confidence > 0.65f)
+                                Log.d("LINHA", "${line.text} - ${line.confidence}")
+                                if (line.confidence >= Constants.o)
                                     placaTexto += line.text
                             }
                         }
@@ -683,8 +683,6 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
                         val isBrasil = Utilities.validateBrazilianLicensePlate(placaNormalizada)
                         if (isBrasil) {
-                            // validar placa de moto (2 linhas)
-                            // colocar exeções I -> 1; B -> 8.... sufixo e prefixo
                             Log.d("PLACA FINAL", placaNormalizada)
                             limparPlacas()
                             if (!placas.any { it.placa == placaNormalizada }) {

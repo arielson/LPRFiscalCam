@@ -203,6 +203,7 @@ object Utilities {
         var result = removeSpecialCharacters(input)
         result = result.replace("BRASIL", "")
         result = result.replace("RASIL", "")
+        result = result.replace("ASIL", "")
         val resultMatch = getMatchedString(result, Regex(brasilRegex))
         if (resultMatch != null)
             return resultMatch.toString()
