@@ -430,7 +430,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         placa: String,
         confiabilidade: Float,
         bitmapPlaca: Bitmap,
-        bitmapVeiculo: Bitmap
+        bitmapVeiculo: Bitmap,
+        aferidor: Int
     ) {
         Log.d("Placa:", placa)
 
@@ -442,6 +443,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         veiculoInput.cameraId = cameraId
         veiculoInput.latitude = latitude
         veiculoInput.longitude = longitude
+        veiculoInput.aferidor = aferidor
         Utilities.service()
             .setVeiculo(veiculoInput)
             .enqueue(object : Callback<Veiculo?> {
@@ -704,7 +706,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
                                 Thread {
                                     val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
-                                    sendPlate(placaNormalizada, confidence, placa, veiculoBitmap)
+                                    sendPlate(placaNormalizada, confidence, placa, veiculoBitmap, 1)
                                 }.start()
                             }
                         } else if (!isPost) {
@@ -732,7 +734,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
                                                 Thread {
                                                     val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
-                                                    sendPlate(veiculo.placa!!, confidence, placa, veiculoBitmap)
+                                                    sendPlate(veiculo.placa!!, confidence, placa, veiculoBitmap, 2)
                                                 }.start()
                                             }
                                         }
