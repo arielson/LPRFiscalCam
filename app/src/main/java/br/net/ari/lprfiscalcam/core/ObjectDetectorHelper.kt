@@ -53,9 +53,12 @@ class ObjectDetectorHelper (
             return
         }
 
+        val sharedPreference = context.getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
+        val threshold = sharedPreference.getFloat("threshold", 0.90f)
+
         val optionsBuilder =
             ObjectDetector.ObjectDetectorOptions.builder()
-                .setScoreThreshold(Constants.d)
+                .setScoreThreshold(threshold)
                 .setMaxResults(maxResults)
 
         val baseOptionsBuilder = BaseOptions.builder().setNumThreads(numThreads)

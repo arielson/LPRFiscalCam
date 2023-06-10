@@ -243,7 +243,10 @@ class MainActivity : AppCompatActivity() {
                 dialog.show()
 
                 return@setOnClickListener
-            } else if (!sharedPreference.contains("camera")) {
+            } else if (!sharedPreference.contains("camera") || !sharedPreference.contains("threshold") || !sharedPreference.contains(
+                    "ocrconfidence"
+                ) || !sharedPreference.contains("sameplatedelay")
+            ) {
                 relativeLayoutLoading.visibility = View.VISIBLE
                 Utilities.service().getCameraByChaveVaxtor(sharedPreference.getString("chave", ""))
                     .enqueue(object : Callback<Camera?> {
@@ -254,6 +257,17 @@ class MainActivity : AppCompatActivity() {
                             if (response.isSuccessful && response.body() != null) {
                                 val camera = response.body()!!
                                 editor.putLong("camera", camera.id)
+                                camera.threshold?.let { it1 -> editor.putFloat("threshold", it1) }
+                                camera.ocrConfidence?.let { it1 ->
+                                    editor.putFloat(
+                                        "ocrconfidence",
+                                        it1
+                                    )
+                                }
+                                camera.samePlateDelay?.let { it1 -> editor.putInt("sameplatedelay", it1) }
+                                editor.apply()
+
+                                buttonAcessar.performClick()
                             } else {
                                 Toast.makeText(
                                     applicationContext, Utilities.analiseException(
