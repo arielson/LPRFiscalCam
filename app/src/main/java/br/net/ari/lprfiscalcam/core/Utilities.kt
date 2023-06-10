@@ -208,12 +208,35 @@ object Utilities {
         if (resultMatch != null)
             return resultMatch.toString()
         else {
-            val resultMatch2 = getMatchedString(result.replace("G", "0"), Regex(brasilRegex))
+            var temp = result
+            if (temp.length == 7) {
+                if (findCharAtIndex(temp, 3) == 'G' || findCharAtIndex(temp, 3) == 'O')
+                    temp = replaceCharAtIndex(temp, 3, '0')
+                if (findCharAtIndex(temp, 5) == 'G' || findCharAtIndex(temp, 5) == 'O')
+                    temp = replaceCharAtIndex(temp, 5, '0')
+                if (findCharAtIndex(temp, 6) == 'G' || findCharAtIndex(temp, 6) == 'O')
+                    temp = replaceCharAtIndex(temp, 6, '0')
+            }
+            val resultMatch2 = getMatchedString(temp, Regex(brasilRegex))
             if (resultMatch2 != null)
                 return resultMatch2.toString()
         }
 
         return ""
+    }
+
+    private fun replaceCharAtIndex(originalString: String, index: Int, newChar: Char): String {
+        val charArray = originalString.toCharArray()
+        charArray[index] = newChar
+        return String(charArray)
+    }
+
+    private fun findCharAtIndex(inputString: String, index: Int): Char? {
+        return if (index >= 0 && index < inputString.length) {
+            inputString[index]
+        } else {
+            null
+        }
     }
 
     fun getSecondsBetweenDates(start: LocalDateTime, end: LocalDateTime): Long {
@@ -256,5 +279,12 @@ object Utilities {
         val decodedBytes: ByteArray = Base64.decode(value, Base64.DEFAULT)
 
         return String(decodedBytes, Charset.forName("UTF-8"))
+    }
+
+    fun bitmapToBase64(bitmap: Bitmap): String {
+        val outputStream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+        val byteArray = outputStream.toByteArray()
+        return Base64.encodeToString(byteArray, Base64.DEFAULT)
     }
 }

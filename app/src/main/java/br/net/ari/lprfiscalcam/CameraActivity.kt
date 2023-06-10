@@ -55,6 +55,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
     private lateinit var imageAnalyzer: ImageAnalysis
     private lateinit var cameraProvider: ProcessCameraProvider
 
+    private var camera: Camera? = null
     private val cameraExecutor by lazy { Executors.newSingleThreadExecutor() }
     private var cameraControl: CameraControl? = null
     private var cameraInfo: CameraInfo? = null
@@ -279,7 +280,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                 var widthRatio = resources.displayMetrics.widthPixels / factor
                 var heightRatio = resources.displayMetrics.heightPixels / factor
 
-                while (widthRatio < 1280) {
+                while (widthRatio < 1024) {
                     widthRatio = (widthRatio * 1.5).toInt()
                     heightRatio = (heightRatio * 1.5).toInt()
                 }
@@ -312,11 +313,11 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                     }
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-                val camera =
+                camera =
                     cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
-                cameraControl = camera.cameraControl
-                cameraInfo = camera.cameraInfo
-                camera.cameraControl.cancelFocusAndMetering()
+                cameraControl = camera?.cameraControl
+                cameraInfo = camera?.cameraInfo
+                camera?.cameraControl?.cancelFocusAndMetering()
 
                 loadFocus()
                 loadBrilho()
@@ -384,7 +385,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                 Toast.makeText(
                     applicationContext,
                     "Ajuste o zoom, foco e brilho deslizando nas barras ao lado",
-                    Toast.LENGTH_LONG
+                    Toast.LENGTH_SHORT
                 ).show()
 
                 if (sharedPreference.contains("zoom")) {
@@ -595,6 +596,12 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
     @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
     fun loadFocus() {
+        if (cameraManager != null) {
+            cameraCharacteristics =
+                cameraManager?.getCameraCharacteristics(cameraManager!!.cameraIdList[0])
+            camCharacteristics =
+                cameraCharacteristics?.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+        }
         if (cameraControl != null) {
             if (cameraManager != null && cameraManager!!.cameraIdList.isNotEmpty()) {
                 val isManualFocus =
@@ -666,6 +673,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                 bndbox.left = left
                 bndbox.top = top
                 val placa = Utilities.cropBitmap(bitmap, bndbox)
+//                val placaBase64 = Utilities.bitmapToBase64(placa)
+//                Log.d("PLACA BASE64", placaBase64)
                 val inputImage = InputImage.fromBitmap(placa, 0)
 
                 recognizer.process(inputImage)
