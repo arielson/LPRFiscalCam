@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">LPR Fiscal Cam</string>
+    <string name="app_name">LPR Fiscal Cam2</string>
     <string name="service_failure">Não foi possível efetuar solicitação. Tente novamente.</string>
     <string name="login">Login</string>
     <string name="senha">Senha</string>

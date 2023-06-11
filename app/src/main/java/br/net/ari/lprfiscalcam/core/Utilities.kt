@@ -10,7 +10,7 @@ import android.util.Base64
 import android.view.Window
 import android.widget.Button
 import android.widget.TextView
-import br.net.ari.lprfiscalcam.R
+import br.net.ari.lprfiscalcam2.R
 import br.net.ari.lprfiscalcam.interfaces.APIService
 import br.net.ari.lprfiscalcam.models.Cliente
 import com.google.gson.GsonBuilder

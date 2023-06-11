@@ -25,7 +25,7 @@ class ObjectDetectorHelper (
 
     private val tag = "ObjectDetectionHelper"
 
-    private val binData: Int = 0
+    private val binData: Int = 1
 
     private var objectDetector: ObjectDetector? = null
     private var gpuSupported = false

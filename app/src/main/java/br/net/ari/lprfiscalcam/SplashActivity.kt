@@ -1,4 +1,4 @@
-package br.net.ari.lprfiscalcam
+package br.net.ari.lprfiscalcam2
 
 import android.annotation.SuppressLint
 import android.content.Intent

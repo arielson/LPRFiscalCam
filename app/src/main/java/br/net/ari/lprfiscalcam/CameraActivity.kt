@@ -1,8 +1,8 @@
-package br.net.ari.lprfiscalcam
+package br.net.ari.lprfiscalcam2
 
 import android.annotation.SuppressLint
 import android.content.*
-import android.graphics.Bitmap
+import android.graphics.*
 import android.hardware.camera2.*
 import android.media.MediaPlayer
 import android.os.BatteryManager
@@ -35,6 +35,7 @@ import java.util.*
 import java.util.concurrent.Executors
 import android.util.Base64
 import android.view.*
+import androidx.camera.core.Camera
 import br.net.ari.lprfiscalcam.dto.plateDTO
 import br.net.ari.lprfiscalcam.models.Veiculo
 import com.google.mlkit.vision.common.InputImage
@@ -694,6 +695,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                         Log.d("PLACA NORMALIZADA", placaNormalizada)
 
                         val isBrasil = Utilities.validateBrazilianLicensePlate(placaNormalizada)
+                        val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
                         if (isBrasil) {
                             Log.d("PLACA FINAL", placaNormalizada)
                             limparPlacas()
@@ -705,7 +707,6 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                 placas.add(placaDTO)
 
                                 Thread {
-                                    val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
                                     sendPlate(placaNormalizada, confidence, placa, veiculoBitmap, 1)
                                 }.start()
                             }
@@ -733,7 +734,6 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                                 placas.add(placaDTO)
 
                                                 Thread {
-                                                    val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
                                                     sendPlate(veiculo.placa!!, confidence, placa, veiculoBitmap, 2)
                                                 }.start()
                                             }
