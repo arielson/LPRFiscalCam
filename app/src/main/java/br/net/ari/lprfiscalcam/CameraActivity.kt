@@ -225,19 +225,47 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
             builder.setMessage("Ao sair os dados de login, senha e operação serão limpos. Deseja continuar?")
                 .setCancelable(false)
                 .setPositiveButton("Sim") { _, _ ->
-                    cameraProvider.unbindAll()
-                    Thread.sleep(100)
-                    imageAnalyzer.clearAnalyzer()
-                    Thread.sleep(100)
-                    cameraExecutor.shutdown()
-                    Thread.sleep(100)
-                    editor.remove("fiscalizacao")
-                    editor.remove("login")
-                    editor.remove("senha")
-                    editor.apply()
-                    val intent = Intent(this, MainActivity::class.java)
-                    startActivity(intent)
-                    finish()
+                    val chave = sharedPreference.getString("chave", "")
+                    val uuid = sharedPreference.getString("uuid", "")
+                    Utilities.service().cleanCameraByChave(chave, uuid)
+                        .enqueue(object : Callback<br.net.ari.lprfiscalcam.models.Camera?> {
+                            override fun onResponse(
+                                call: Call<br.net.ari.lprfiscalcam.models.Camera?>,
+                                response: Response<br.net.ari.lprfiscalcam.models.Camera?>
+                            ) {
+                                if (response.isSuccessful && response.body() != null) {
+                                    cameraProvider.unbindAll()
+                                    Thread.sleep(50)
+                                    imageAnalyzer.clearAnalyzer()
+                                    Thread.sleep(50)
+                                    cameraExecutor.shutdown()
+                                    Thread.sleep(50)
+                                    Utilities.clearSharedPreferences(activity, "lprfiscalcam")
+                                    val intent = Intent(activity, MainActivity::class.java)
+                                    startActivity(intent)
+                                    finish()
+                                } else {
+                                    Utilities.showDialog(
+                                        activity,
+                                        Utilities.analiseException(
+                                            response.code(), response.raw().toString(),
+                                            if (response.errorBody() != null) response.errorBody()!!
+                                                .string() else null,
+                                            applicationContext
+                                        )
+                                    )
+                                }
+                            }
+
+                            override fun onFailure(call: Call<br.net.ari.lprfiscalcam.models.Camera?>, t: Throwable) {
+                                t.printStackTrace()
+                                Toast.makeText(
+                                    applicationContext,
+                                    R.string.service_failure,
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        })
                 }
                 .setNegativeButton("Não") { dialog, _ ->
                     buttonExit.isEnabled = true

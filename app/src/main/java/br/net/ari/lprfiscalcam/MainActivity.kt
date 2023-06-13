@@ -188,7 +188,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         buttonAcessar.setOnClickListener {
-            if (!sharedPreference.contains("chave")) {
+            if (!sharedPreference.contains("chave") || !sharedPreference.contains("uuid")) {
                 val inputEditTextField = EditText(this)
                 inputEditTextField.filters =
                     arrayOf(InputFilter.LengthFilter(6), InputFilter.AllCaps())
@@ -199,7 +199,8 @@ class MainActivity : AppCompatActivity() {
                     .setPositiveButton("OK") { _, _ ->
                         relativeLayoutLoading.visibility = View.VISIBLE
                         val chave = inputEditTextField.text.toString()
-                        Utilities.service().getCameraByChave(chave.uppercase(Locale.ROOT))
+                        val uuid = Utilities.generateUUID()
+                        Utilities.service().getCameraByChave(chave.uppercase(Locale.ROOT), uuid)
                             .enqueue(object : Callback<Camera?> {
                                 override fun onResponse(
                                     call: Call<Camera?>,
@@ -211,18 +212,20 @@ class MainActivity : AppCompatActivity() {
                                         editor.putString("chave", camera.chaveLprFiscal)
                                         editor.putString("chave_lprfiscal", camera.chaveLprFiscal)
                                         editor.putLong("camera", camera.id)
+                                        editor.putString("uuid", uuid)
                                         editor.apply()
 
                                         buttonAcessar.performClick()
                                     } else {
-                                        Toast.makeText(
-                                            applicationContext, Utilities.analiseException(
+                                        Utilities.showDialog(
+                                            activity,
+                                            Utilities.analiseException(
                                                 response.code(), response.raw().toString(),
                                                 if (response.errorBody() != null) response.errorBody()!!
                                                     .string() else null,
                                                 applicationContext
-                                            ), Toast.LENGTH_LONG
-                                        ).show()
+                                            )
+                                        )
                                         relativeLayoutLoading.visibility = View.GONE
                                     }
                                 }
@@ -245,8 +248,8 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             } else {
                 buttonAcessar.isEnabled = false
-
-                Utilities.service().getCameraByChaveVaxtor(sharedPreference.getString("chave", ""))
+                val uuid = sharedPreference.getString("uuid", "")
+                Utilities.service().getCameraByChave(sharedPreference.getString("chave", ""), uuid)
                     .enqueue(object : Callback<Camera?> {
                         override fun onResponse(
                             call: Call<Camera?>,
@@ -283,16 +286,18 @@ class MainActivity : AppCompatActivity() {
                                 buttonAcessar.isEnabled = true
                                 finish()
                             } else {
-                                Toast.makeText(
-                                    applicationContext, Utilities.analiseException(
+                                Utilities.showDialog(
+                                    activity,
+                                    Utilities.analiseException(
                                         response.code(), response.raw().toString(),
                                         if (response.errorBody() != null) response.errorBody()!!
                                             .string() else null,
                                         applicationContext
-                                    ), Toast.LENGTH_LONG
-                                ).show()
+                                    )
+                                )
                             }
                             relativeLayoutLoading.visibility = View.GONE
+                            buttonAcessar.isEnabled = true
                         }
 
                         override fun onFailure(call: Call<Camera?>, t: Throwable) {
@@ -303,6 +308,7 @@ class MainActivity : AppCompatActivity() {
                                 R.string.service_failure,
                                 Toast.LENGTH_LONG
                             ).show()
+                            buttonAcessar.isEnabled = true
                         }
                     })
             }

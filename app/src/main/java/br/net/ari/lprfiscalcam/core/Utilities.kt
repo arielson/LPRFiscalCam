@@ -29,6 +29,7 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Duration
 import java.time.LocalDateTime
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 
@@ -36,7 +37,7 @@ object Utilities {
     private const val Host = "lprfiscalapi.ari.net.br"
 //    private const val Host = "lprfiscalapihomol.ari.net.br"
 
-    private const val ServiceUrl = "https://$Host/api/v1/"
+    private const val ServiceUrl = "https://$Host/api/"
     private var service: APIService? = null
     private val interceptor = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
     var cliente: Cliente? = null
@@ -216,6 +217,13 @@ object Utilities {
                     temp = replaceCharAtIndex(temp, 5, '0')
                 if (findCharAtIndex(temp, 6) == 'G' || findCharAtIndex(temp, 6) == 'O')
                     temp = replaceCharAtIndex(temp, 6, '0')
+
+                if (findCharAtIndex(temp, 3) == 'B')
+                    temp = replaceCharAtIndex(temp, 3, '8')
+                if (findCharAtIndex(temp, 5) == 'B')
+                    temp = replaceCharAtIndex(temp, 5, '8')
+                if (findCharAtIndex(temp, 6) == 'B')
+                    temp = replaceCharAtIndex(temp, 6, '8')
             }
             val resultMatch2 = getMatchedString(temp, Regex(brasilRegex))
             if (resultMatch2 != null)
@@ -286,5 +294,17 @@ object Utilities {
         bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
         val byteArray = outputStream.toByteArray()
         return Base64.encodeToString(byteArray, Base64.NO_WRAP)
+    }
+
+    fun generateUUID(): String {
+        val uuid = UUID.randomUUID()
+        return uuid.toString()
+    }
+
+    fun clearSharedPreferences(context: Context, sharedPreferencesName: String) {
+        val sharedPreferences = context.getSharedPreferences(sharedPreferencesName, Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.clear()
+        editor.apply()
     }
 }
