@@ -1,4 +1,4 @@
-package br.net.ari.lprfiscalcam
+package br.net.ari.lprfiscalcam2
 
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -25,6 +25,6 @@ class SplashActivity : AppCompatActivity() {
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
             finish()
-        }, 3000)
+        }, 2000)
     }
 }

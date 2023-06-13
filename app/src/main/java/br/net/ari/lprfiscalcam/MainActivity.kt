@@ -1,4 +1,4 @@
-package br.net.ari.lprfiscalcam
+package br.net.ari.lprfiscalcam2
 
 import android.app.Activity
 import android.content.Context
@@ -243,11 +243,9 @@ class MainActivity : AppCompatActivity() {
                 dialog.show()
 
                 return@setOnClickListener
-            } else if (!sharedPreference.contains("camera") || !sharedPreference.contains("threshold") || !sharedPreference.contains(
-                    "ocrconfidence"
-                ) || !sharedPreference.contains("sameplatedelay")
-            ) {
-                relativeLayoutLoading.visibility = View.VISIBLE
+            } else {
+                buttonAcessar.isEnabled = false
+
                 Utilities.service().getCameraByChaveVaxtor(sharedPreference.getString("chave", ""))
                     .enqueue(object : Callback<Camera?> {
                         override fun onResponse(
@@ -267,7 +265,23 @@ class MainActivity : AppCompatActivity() {
                                 camera.samePlateDelay?.let { it1 -> editor.putInt("sameplatedelay", it1) }
                                 editor.apply()
 
-                                buttonAcessar.performClick()
+                                val fiscalizacao = spinnerCamera.selectedItem as Fiscalizacao
+                                editor.putLong("fiscalizacao", fiscalizacao.id)
+                                editor.apply()
+
+                                val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
+                                if (usbManager.deviceList.isEmpty()) {
+                                    CameraActivity.fiscalizacao = fiscalizacao
+                                    val intent = Intent(activity, CameraActivity::class.java)
+                                    startActivity(intent)
+                                } else {
+                                    CameraUSBActivity.fiscalizacaoId = fiscalizacao.id
+                                    val intent = Intent(activity, CameraUSBActivity::class.java)
+                                    startActivity(intent)
+                                }
+
+                                buttonAcessar.isEnabled = true
+                                finish()
                             } else {
                                 Toast.makeText(
                                     applicationContext, Utilities.analiseException(
@@ -291,25 +305,6 @@ class MainActivity : AppCompatActivity() {
                             ).show()
                         }
                     })
-            } else {
-                buttonAcessar.isEnabled = false
-                val fiscalizacao = spinnerCamera.selectedItem as Fiscalizacao
-                editor.putLong("fiscalizacao", fiscalizacao.id)
-                editor.apply()
-
-                val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
-                if (usbManager.deviceList.isEmpty()) {
-                    CameraActivity.fiscalizacao = fiscalizacao
-                    val intent = Intent(this, CameraActivity::class.java)
-                    startActivity(intent)
-                } else {
-                    CameraUSBActivity.fiscalizacaoId = fiscalizacao.id
-                    val intent = Intent(this, CameraUSBActivity::class.java)
-                    startActivity(intent)
-                }
-
-                buttonAcessar.isEnabled = true
-                finish()
             }
         }
 

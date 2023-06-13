@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace 'br.net.ari.lprfiscalcam'
+    namespace 'br.net.ari.lprfiscalcam2'
     compileSdk 33
 
     defaultConfig {
-        applicationId "br.net.ari.lprfiscalcam"
+        applicationId "br.net.ari.lprfiscalcam2"
         minSdk 29
         targetSdk 33
         versionCode 16
@@ -76,6 +76,9 @@ dependencies {
 
     implementation 'org.tensorflow:tensorflow-lite-task-vision-play-services:0.4.2'
     implementation 'com.google.android.gms:play-services-tflite-gpu:16.2.0'
+
+    implementation 'org.tensorflow:tensorflow-lite:2.12.0'
+
 
     implementation 'com.google.mlkit:text-recognition:16.0.0'
 }

@@ -10,7 +10,7 @@ import android.util.Base64
 import android.view.Window
 import android.widget.Button
 import android.widget.TextView
-import br.net.ari.lprfiscalcam.R
+import br.net.ari.lprfiscalcam2.R
 import br.net.ari.lprfiscalcam.interfaces.APIService
 import br.net.ari.lprfiscalcam.models.Cliente
 import com.google.gson.GsonBuilder
@@ -283,8 +283,8 @@ object Utilities {
 
     fun bitmapToBase64(bitmap: Bitmap): String {
         val outputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
         val byteArray = outputStream.toByteArray()
-        return Base64.encodeToString(byteArray, Base64.DEFAULT)
+        return Base64.encodeToString(byteArray, Base64.NO_WRAP)
     }
 }

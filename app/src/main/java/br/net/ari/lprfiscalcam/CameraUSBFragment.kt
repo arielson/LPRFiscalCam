@@ -1,4 +1,4 @@
-package br.net.ari.lprfiscalcam
+package br.net.ari.lprfiscalcam2
 
 import android.annotation.SuppressLint
 import android.content.*
@@ -19,7 +19,7 @@ import android.widget.TextView
 import android.widget.Toast
 import br.net.ari.lprfiscalcam.core.ObjectDetectorHelper
 import br.net.ari.lprfiscalcam.core.Utilities
-import br.net.ari.lprfiscalcam.databinding.FragmentCameraUSBBinding
+import br.net.ari.lprfiscalcam2.databinding.FragmentCameraUSBBinding
 import br.net.ari.lprfiscalcam.dto.plateDTO
 import br.net.ari.lprfiscalcam.models.Veiculo
 import com.google.android.gms.location.*
@@ -454,10 +454,8 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack, ObjectDetector
 
                                 placas.add(placaDTO)
 
-                                Thread {
-                                    val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
-                                    sendPlate(placaNormalizada, confidence, placa, veiculoBitmap)
-                                }.start()
+                                val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
+                                sendPlate(placaNormalizada, confidence, placa, veiculoBitmap)
                             }
                         } else if (!isPost) {
                             isPost = true
@@ -482,10 +480,8 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack, ObjectDetector
 
                                                 placas.add(placaDTO)
 
-                                                Thread {
-                                                    val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
-                                                    sendPlate(veiculo.placa!!, confidence, placa, veiculoBitmap)
-                                                }.start()
+                                                val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
+                                                sendPlate(veiculo.placa!!, confidence, placa, veiculoBitmap)
                                             }
                                         }
                                     } else {
