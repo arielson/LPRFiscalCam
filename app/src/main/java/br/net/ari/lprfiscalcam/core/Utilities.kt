@@ -180,7 +180,7 @@ object Utilities {
         return if (height == 0) width else greatestCommonFactor(height, width % height)
     }
 
-    val brasilRegex = "[A-Z]{3}\\d[A-Z0-9]{1}\\d{2}"
+    const val brasilRegex = "[A-Z]{3}\\d[A-Z0-9]{1}\\d{2}"
 
     fun validateBrazilianLicensePlate(licensePlate: String): Boolean {
         val regex = Regex(brasilRegex)
@@ -253,18 +253,29 @@ object Utilities {
         return duration.seconds
     }
 
-    fun showDialog(activity: Activity, info: String?) {
+    fun showDialog(activity: Activity, info: String?, title: String?) {
         val dialog = Dialog(activity)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        if (title == null) {
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        }
         dialog.setCancelable(false)
         dialog.setContentView(R.layout.dialog_custom_layout)
         dialog.window?.setLayout(
             (activity.resources.displayMetrics.widthPixels * 0.8).toInt(),
             (activity.resources.displayMetrics.heightPixels * 0.8).toInt()
         )
-        val textViewInfo = dialog.findViewById(R.id.textViewInfo) as TextView
-        textViewInfo.text = Html.fromHtml(info, Html.FROM_HTML_MODE_LEGACY)
         val buttonFechar = dialog.findViewById(R.id.buttonFechar) as Button
+        val textViewInfo = dialog.findViewById(R.id.textViewInfo) as TextView
+        if (title == null) {
+            textViewInfo.text = Html.fromHtml(info, Html.FROM_HTML_MODE_LEGACY)
+        } else {
+            dialog.setTitle(title)
+            textViewInfo.text = info
+            buttonFechar.textSize = 20F
+            buttonFechar.width = 120
+            buttonFechar.height = 40
+        }
+
         buttonFechar.setOnClickListener {
             dialog.dismiss()
         }

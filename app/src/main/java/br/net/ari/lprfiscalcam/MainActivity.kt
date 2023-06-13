@@ -224,7 +224,8 @@ class MainActivity : AppCompatActivity() {
                                                 if (response.errorBody() != null) response.errorBody()!!
                                                     .string() else null,
                                                 applicationContext
-                                            )
+                                            ),
+                                            "Aviso"
                                         )
                                         relativeLayoutLoading.visibility = View.GONE
                                     }
@@ -293,8 +294,12 @@ class MainActivity : AppCompatActivity() {
                                         if (response.errorBody() != null) response.errorBody()!!
                                             .string() else null,
                                         applicationContext
-                                    )
+                                    ),
+                                    "Aviso"
                                 )
+                                editor.remove("uuid")
+                                editor.remove("chave")
+                                editor.apply()
                             }
                             relativeLayoutLoading.visibility = View.GONE
                             buttonAcessar.isEnabled = true

@@ -252,7 +252,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                             if (response.errorBody() != null) response.errorBody()!!
                                                 .string() else null,
                                             applicationContext
-                                        )
+                                        ),
+                                        null
                                     )
                                 }
                             }
@@ -496,7 +497,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                     activity,
                                     "${veiculo.marcaModelo}<br><font color=${
                                         Utilities.colorByStatus(veiculo.pendencia)
-                                    }>$placa</font>"
+                                    }>$placa</font>",
+                                    null
                                 )
                             }
 

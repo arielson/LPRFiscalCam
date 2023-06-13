@@ -299,7 +299,8 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack, ObjectDetector
                                     activity,
                                     "${veiculo.marcaModelo}<br><font color=${
                                         Utilities.colorByStatus(veiculo.pendencia)
-                                    }>$placa</font>"
+                                    }>$placa</font>",
+                                    null
                                 )
                             }
 
