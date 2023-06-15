@@ -469,6 +469,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         veiculoInput.fiscalizacaoId = fiscalizacao.id
         veiculoInput.dispositivo = Utilities.getDeviceName()
         veiculoInput.cameraId = cameraId
+        veiculoInput.confianca = confiabilidade.toDouble()
         veiculoInput.latitude = latitude
         veiculoInput.longitude = longitude
         veiculoInput.aferidor = aferidor
@@ -753,6 +754,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
                                                     placas.add(placaDTO)
                                                     sendPlate(veiculo.placa!!, confidence, placaBitmap, veiculoBitmap, 2)
+                                                    isPost = false
                                                 }
                                             }
                                         } else {
@@ -762,9 +764,9 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                                     .string() else null,
                                                 applicationContext
                                             )
+                                            isPost = false
                                             Log.e("ERRO POST", "$error")
                                         }
-                                        isPost = false
                                     }
 
                                     override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
