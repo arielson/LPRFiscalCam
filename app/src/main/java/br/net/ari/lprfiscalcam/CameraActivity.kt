@@ -729,11 +729,13 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                 }
                             } else if (!isPost) {
                                 isPost = true
+                                val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
+                                val placaBitmap: Bitmap = placa.copy(placa.config, true)
                                 val cameraId = sharedPreference.getLong("camera", 0)
                                 val veiculoInput = Veiculo()
                                 veiculoInput.fiscalizacaoId = fiscalizacao.id
                                 veiculoInput.cameraId = cameraId
-                                veiculoInput.foto1 = Utilities.bitmapToBase64(placa)
+                                veiculoInput.foto1 = Utilities.bitmapToBase64(placaBitmap)
                                 Utilities.service().getPlaca(veiculoInput).enqueue(object : Callback<Veiculo?> {
                                     override fun onResponse(
                                         call: Call<Veiculo?>,
@@ -750,9 +752,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                                     placaDTO.data = LocalDateTime.now()
 
                                                     placas.add(placaDTO)
-
-                                                    val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
-                                                    sendPlate(veiculo.placa!!, confidence, placa, veiculoBitmap, 2)
+                                                    sendPlate(veiculo.placa!!, confidence, placaBitmap, veiculoBitmap, 2)
                                                 }
                                             }
                                         } else {
