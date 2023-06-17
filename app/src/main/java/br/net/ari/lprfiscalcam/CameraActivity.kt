@@ -755,23 +755,25 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                                     placas.add(placaDTO)
                                                     sendPlate(veiculo.placa!!, confidence, placaBitmap, veiculoBitmap, 2)
                                                     isPost = false
-                                                }
-                                            }
+                                                } else
+                                                    isPost = false
+                                            } else
+                                                isPost = false
                                         } else {
+                                            isPost = false
                                             val error = Utilities.analiseException(
                                                 response.code(), response.raw().toString(),
                                                 if (response.errorBody() != null) response.errorBody()!!
                                                     .string() else null,
                                                 applicationContext
                                             )
-                                            isPost = false
                                             Log.e("ERRO POST", "$error")
                                         }
                                     }
 
                                     override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
-                                        t.printStackTrace()
                                         isPost = false
+                                        t.printStackTrace()
                                     }
                                 })
                             }
