@@ -110,6 +110,16 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
     override fun onResume() {
         super.onResume()
         startLocationUpdates()
+
+        val rootView = findViewById<View>(android.R.id.content)
+        rootView.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                rootView.viewTreeObserver.removeOnGlobalLayoutListener(this)
+
+                setFoco()
+                setZoom()
+            }
+        })
     }
 
     override fun onPause() {
@@ -416,34 +426,43 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                     Toast.LENGTH_SHORT
                 ).show()
 
-                if (sharedPreference.contains("zoom")) {
-                    val progress = sharedPreference.getInt("zoom", 0)
-                    seekBarZoom.progress = progress
-                    val zoom = progress / 100.toFloat()
-                    cameraControl?.setLinearZoom(zoom)
-                }
-
-                if (sharedPreference.contains("foco")) {
-                    val progress = sharedPreference.getInt("foco", 0)
-                    seekBarFoco.progress = progress
-                    if (minimumLens != null) {
-                        minimumLensNum = progress.toFloat() * minimumLens!! / 100
-                        val captureRequestOptions = CaptureRequestOptions.Builder()
-                            .setCaptureRequestOption(
-                                CaptureRequest.CONTROL_AF_MODE,
-                                CameraMetadata.CONTROL_AF_MODE_OFF
-                            )
-                            .setCaptureRequestOption(
-                                CaptureRequest.LENS_FOCUS_DISTANCE,
-                                minimumLensNum!!
-                            )
-                            .build()
-                        camera2CameraControl.captureRequestOptions = captureRequestOptions
-                    }
-                }
+                setZoom()
+                setFoco()
             }, ContextCompat.getMainExecutor(this.applicationContext))
         } catch (e: IOException) {
             throw RuntimeException(e)
+        }
+    }
+
+    private fun setZoom() {
+        if (sharedPreference.contains("zoom")) {
+            val progress = sharedPreference.getInt("zoom", 0)
+            seekBarZoom.progress = progress
+            val zoom = progress / 100.toFloat()
+            cameraControl?.setLinearZoom(zoom)
+        }
+    }
+    @SuppressLint("UnsafeOptInUsageError")
+    private fun setFoco() {
+        if (sharedPreference.contains("foco")) {
+            val progress = sharedPreference.getInt("foco", 0)
+            seekBarFoco.progress = progress
+            if (minimumLens != null) {
+                minimumLensNum = progress.toFloat() * minimumLens!! / 100
+                val captureRequestOptions = CaptureRequestOptions.Builder()
+                    .setCaptureRequestOption(
+                        CaptureRequest.CONTROL_AF_MODE,
+                        CameraMetadata.CONTROL_AF_MODE_OFF
+                    )
+                    .setCaptureRequestOption(
+                        CaptureRequest.LENS_FOCUS_DISTANCE,
+                        minimumLensNum!!
+                    )
+                    .build()
+                val camera2CameraControl: Camera2CameraControl =
+                    Camera2CameraControl.from(cameraControl!!)
+                camera2CameraControl.captureRequestOptions = captureRequestOptions
+            }
         }
     }
 
