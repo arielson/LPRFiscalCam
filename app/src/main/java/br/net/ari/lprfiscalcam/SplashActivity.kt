@@ -1,4 +1,4 @@
-package br.net.ari.lprfiscalcam2
+package br.net.ari.lprfiscalcam
 
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -6,8 +6,8 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import br.net.ari.lprfiscalcam.core.Selvagem
-import br.net.ari.lprfiscalcam.core.Utilities
+//import br.net.ari.lprfiscalcam.core.Selvagem
+//import br.net.ari.lprfiscalcam.core.Utilities
 
 @SuppressLint("CustomSplashScreen")
 class SplashActivity : AppCompatActivity() {

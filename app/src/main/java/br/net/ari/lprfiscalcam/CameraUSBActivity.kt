@@ -1,4 +1,4 @@
-package br.net.ari.lprfiscalcam2
+package br.net.ari.lprfiscalcam
 
 import android.annotation.SuppressLint
 import android.os.Bundle

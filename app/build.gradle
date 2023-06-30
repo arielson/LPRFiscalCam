@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace 'br.net.ari.lprfiscalcam2'
+    namespace 'br.net.ari.lprfiscalcam'
     compileSdk 33
 
     defaultConfig {
-        applicationId "br.net.ari.lprfiscalcam2"
+        applicationId "br.net.ari.lprfiscalcam"
         minSdk 29
         targetSdk 33
         versionCode 16
@@ -24,7 +24,9 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            debuggable false
+            minifyEnabled true
+            shrinkResources true
 
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

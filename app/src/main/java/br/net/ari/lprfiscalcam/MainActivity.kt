@@ -1,4 +1,4 @@
-package br.net.ari.lprfiscalcam2
+package br.net.ari.lprfiscalcam
 
 import android.app.Activity
 import android.content.Context
