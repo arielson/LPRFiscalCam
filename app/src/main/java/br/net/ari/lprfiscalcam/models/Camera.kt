@@ -6,4 +6,6 @@ class Camera {
     var threshold: Float? = null
     var ocrConfidence: Float? = null
     var samePlateDelay: Int? = null
+    var bateria: Float? = null
+    var temperatura: Float? = null
 }

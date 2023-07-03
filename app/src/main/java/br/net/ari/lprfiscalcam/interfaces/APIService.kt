@@ -4,6 +4,7 @@ import br.net.ari.lprfiscalcam.models.*
 import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 
@@ -47,4 +48,7 @@ interface APIService {
 
     @POST("v1/FiscalizacaoVeiculo/GetPlaca")
     fun getPlaca(@Body veiculo: Veiculo?): Call<Veiculo?>
+
+    @PATCH("v1/Camera/AtualizaBateriaTemperaturaByChave")
+    fun setCamera(@Body camera: Camera?): Call<Camera?>
 }

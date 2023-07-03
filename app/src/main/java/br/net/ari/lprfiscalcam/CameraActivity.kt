@@ -85,7 +85,10 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
     private lateinit var viewFinder: PreviewView
     private lateinit var seekBarZoom: SeekBar
+    private lateinit var textViewZoom: TextView
     private lateinit var seekBarFoco: SeekBar
+    private lateinit var textViewFoco: TextView
+    private lateinit var textViewBrilho: TextView
     private lateinit var textViewPlateLog: TextView
     private lateinit var mediaPlayer: MediaPlayer
 
@@ -112,7 +115,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         startLocationUpdates()
 
         val rootView = findViewById<View>(android.R.id.content)
-        rootView.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+        rootView.viewTreeObserver.addOnGlobalLayoutListener(object :
+            ViewTreeObserver.OnGlobalLayoutListener {
             override fun onGlobalLayout() {
                 rootView.viewTreeObserver.removeOnGlobalLayoutListener(this)
 
@@ -213,8 +217,11 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         textViewPlateLog.movementMethod = ScrollingMovementMethod()
 
         seekBarZoom = findViewById(R.id.seekBarZoom)
+        textViewZoom = findViewById(R.id.textViewZoom)
         seekBarFoco = findViewById(R.id.seekBarFoco)
+        textViewFoco = findViewById(R.id.textViewFoco)
         seekBarBrilho = findViewById(R.id.seekBarBrilho)
+        textViewBrilho = findViewById(R.id.textViewBrilho)
 
         val buttonClose = findViewById<Button>(R.id.buttonClose)
         buttonClose.setOnClickListener {
@@ -268,7 +275,10 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                 }
                             }
 
-                            override fun onFailure(call: Call<br.net.ari.lprfiscalcam.models.Camera?>, t: Throwable) {
+                            override fun onFailure(
+                                call: Call<br.net.ari.lprfiscalcam.models.Camera?>,
+                                t: Throwable
+                            ) {
                                 t.printStackTrace()
                                 Toast.makeText(
                                     applicationContext,
@@ -293,7 +303,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
         objectDetectorHelper = ObjectDetectorHelper(
             context = this,
-            objectDetectorListener = this)
+            objectDetectorListener = this
+        )
     }
 
     @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
@@ -382,6 +393,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                         cameraControl?.setLinearZoom(zoom)
                         editor.putInt("zoom", progress)
                         editor.apply()
+                        val text = "ZOOM [$zoom]"
+                        textViewZoom.text = text
                     }
 
                     override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -412,6 +425,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                             camera2CameraControl.captureRequestOptions = captureRequestOptions
                             editor.putInt("foco", progress)
                             editor.apply()
+                            val text = "FOCO [$progress]"
+                            textViewFoco.text = text
                         }
                     }
 
@@ -440,13 +455,18 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
             seekBarZoom.progress = progress
             val zoom = progress / 100.toFloat()
             cameraControl?.setLinearZoom(zoom)
+            val text = "ZOOM [$zoom]"
+            textViewFoco.text = text
         }
     }
+
     @SuppressLint("UnsafeOptInUsageError")
     private fun setFoco() {
         if (sharedPreference.contains("foco")) {
             val progress = sharedPreference.getInt("foco", 0)
             seekBarFoco.progress = progress
+            val text = "ZOOM [$progress]"
+            textViewFoco.text = text
             if (minimumLens != null) {
                 minimumLensNum = progress.toFloat() * minimumLens!! / 100
                 val captureRequestOptions = CaptureRequestOptions.Builder()
@@ -627,6 +647,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                     fromUser: Boolean
                 ) {
                     cameraControl?.setExposureCompensationIndex(progress)
+                    val text = "BRILHO [$progress]"
+                    textViewBrilho.text = text
                 }
 
                 override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -678,6 +700,34 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
             val finalString = "Temp: $batteryTempString | Bat: $bt%"
 
             textViewTemperature.text = finalString
+
+            val camera = br.net.ari.lprfiscalcam.models.Camera()
+            val cameraId = sharedPreference.getLong("camera", 0)
+            camera.id = cameraId
+            camera.bateria = bt.toFloat()
+            camera.temperatura = batteryTemp
+
+            Utilities.service().setCamera(camera)
+                .enqueue(object : Callback<br.net.ari.lprfiscalcam.models.Camera?> {
+                    override fun onResponse(
+                        call: Call<br.net.ari.lprfiscalcam.models.Camera?>,
+                        response: Response<br.net.ari.lprfiscalcam.models.Camera?>
+                    ) {
+                        if (!response.isSuccessful) {
+                            val error = Utilities.analiseException(
+                                response.code(), response.raw().toString(),
+                                if (response.errorBody() != null) response.errorBody()!!
+                                    .string() else null,
+                                applicationContext
+                            )
+                            Log.e("ERRO POST", "$error")
+                        }
+                    }
+
+                    override fun onFailure(call: Call<br.net.ari.lprfiscalcam.models.Camera?>, t: Throwable) {
+                        t.printStackTrace()
+                    }
+                })
         }
     }
 
@@ -725,7 +775,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                             for (textBlock in visionText.textBlocks) {
                                 for (line in textBlock.lines) {
                                     Log.d("LINHA", "${line.text} - ${line.confidence}")
-                                    val ocrConfidence = sharedPreference.getFloat("ocrconfidence", 0.95f)
+                                    val ocrConfidence =
+                                        sharedPreference.getFloat("ocrconfidence", 0.95f)
                                     if (line.confidence >= ocrConfidence)
                                         placaTexto += line.text
                                 }
@@ -756,45 +807,52 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                 veiculoInput.fiscalizacaoId = fiscalizacao.id
                                 veiculoInput.cameraId = cameraId
                                 veiculoInput.foto1 = Utilities.bitmapToBase64(placaBitmap)
-                                Utilities.service().getPlaca(veiculoInput).enqueue(object : Callback<Veiculo?> {
-                                    override fun onResponse(
-                                        call: Call<Veiculo?>,
-                                        response: Response<Veiculo?>
-                                    ) {
-                                        if (response.isSuccessful && response.body() != null) {
-                                            val veiculo = response.body()!!
-                                            if (veiculo.placa != null) {
-                                                Log.d("Foto Placa", "${veiculo.placa}")
-                                                limparPlacas()
-                                                if (!placas.any { it.placa == veiculo.placa }) {
-                                                    val placaDTO = plateDTO()
-                                                    placaDTO.placa = veiculo.placa
-                                                    placaDTO.data = LocalDateTime.now()
+                                Utilities.service().getPlaca(veiculoInput)
+                                    .enqueue(object : Callback<Veiculo?> {
+                                        override fun onResponse(
+                                            call: Call<Veiculo?>,
+                                            response: Response<Veiculo?>
+                                        ) {
+                                            if (response.isSuccessful && response.body() != null) {
+                                                val veiculo = response.body()!!
+                                                if (veiculo.placa != null) {
+                                                    Log.d("Foto Placa", "${veiculo.placa}")
+                                                    limparPlacas()
+                                                    if (!placas.any { it.placa == veiculo.placa }) {
+                                                        val placaDTO = plateDTO()
+                                                        placaDTO.placa = veiculo.placa
+                                                        placaDTO.data = LocalDateTime.now()
 
-                                                    placas.add(placaDTO)
-                                                    sendPlate(veiculo.placa!!, confidence, placaBitmap, veiculoBitmap, 2)
-                                                    isPost = false
+                                                        placas.add(placaDTO)
+                                                        sendPlate(
+                                                            veiculo.placa!!,
+                                                            confidence,
+                                                            placaBitmap,
+                                                            veiculoBitmap,
+                                                            2
+                                                        )
+                                                        isPost = false
+                                                    } else
+                                                        isPost = false
                                                 } else
                                                     isPost = false
-                                            } else
+                                            } else {
                                                 isPost = false
-                                        } else {
-                                            isPost = false
-                                            val error = Utilities.analiseException(
-                                                response.code(), response.raw().toString(),
-                                                if (response.errorBody() != null) response.errorBody()!!
-                                                    .string() else null,
-                                                applicationContext
-                                            )
-                                            Log.e("ERRO POST", "$error")
+                                                val error = Utilities.analiseException(
+                                                    response.code(), response.raw().toString(),
+                                                    if (response.errorBody() != null) response.errorBody()!!
+                                                        .string() else null,
+                                                    applicationContext
+                                                )
+                                                Log.e("ERRO POST", "$error")
+                                            }
                                         }
-                                    }
 
-                                    override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
-                                        isPost = false
-                                        t.printStackTrace()
-                                    }
-                                })
+                                        override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
+                                            isPost = false
+                                            t.printStackTrace()
+                                        }
+                                    })
                             }
                         }
                         .addOnFailureListener { e ->
@@ -809,6 +867,11 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
     fun limparPlacas() {
         val samePlateDelay = sharedPreference.getInt("sameplatedelay", 500)
-        placas.removeAll { Utilities.getSecondsBetweenDates(it.data!!, LocalDateTime.now()) > samePlateDelay }
+        placas.removeAll {
+            Utilities.getSecondsBetweenDates(
+                it.data!!,
+                LocalDateTime.now()
+            ) > samePlateDelay
+        }
     }
 }
