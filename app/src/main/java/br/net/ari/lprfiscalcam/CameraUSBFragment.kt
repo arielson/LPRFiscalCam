@@ -10,13 +10,13 @@ import android.text.Html
 import android.text.method.ScrollingMovementMethod
 import android.util.Base64
 import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.fragment.app.Fragment
 import br.net.ari.lprfiscalcam.core.ObjectDetectorHelper
 import br.net.ari.lprfiscalcam.core.Utilities
 import br.net.ari.lprfiscalcam.databinding.FragmentCameraUSBBinding
@@ -36,6 +36,7 @@ import com.jiangdg.ausbc.render.env.RotateType
 import com.jiangdg.ausbc.utils.ToastUtils
 import com.jiangdg.ausbc.widget.AspectRatioTextureView
 import com.jiangdg.ausbc.widget.IAspectRatio
+import kotlinx.coroutines.*
 import org.tensorflow.lite.task.gms.vision.detector.Detection
 import retrofit2.Call
 import retrofit2.Callback
@@ -71,7 +72,6 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack,
     private lateinit var mediaPlayer: MediaPlayer
 
     private lateinit var recognizer: TextRecognizer
-    private lateinit var bitmapBuffer: Bitmap
 
     private var placas = mutableListOf<plateDTO>()
 
@@ -203,30 +203,31 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack,
         format: IPreviewDataCallBack.DataFormat
     ) {
         if (data != null) {
-            if (!::bitmapBuffer.isInitialized) {
-                bitmapBuffer = Bitmap.createBitmap(
-                    width,
-                    height,
-                    Bitmap.Config.ARGB_8888
-                )
-            }
             try {
-                val bitmap = byteArrayToBitmap(data, width, height)
-                if (bitmap != null)
-                    detectObjects(bitmap)
+                val bitmapJob = CoroutineScope(Dispatchers.Unconfined).launch {
+                    val bitmap = byteArrayToBitmap(data, width, height)
+                    if (bitmap != null)
+                        detectObjects(bitmap)
+                }
+
+                runBlocking {
+                    bitmapJob.join()
+                }
             } catch (ex: java.lang.Exception) {
                 Log.e("onPreviewData", "${ex.message}")
             }
         }
     }
 
-    private fun byteArrayToBitmap(byteArray: ByteArray, width: Int, height: Int): Bitmap? {
+    private suspend fun byteArrayToBitmap(byteArray: ByteArray, width: Int, height: Int): Bitmap? = withContext(
+        Dispatchers.IO
+    ) {
         val yuvImage = YuvImage(byteArray, ImageFormat.NV21, width, height, null)
         val outputStream = ByteArrayOutputStream()
         val rect = Rect(0, 0, width, height)
 
-        if (!yuvImage.compressToJpeg(rect, 100, outputStream)) {
-            return null
+        if (!yuvImage.compressToJpeg(rect, 80, outputStream)) {
+            return@withContext null
         }
 
         val jpegByteArray = outputStream.toByteArray()
@@ -234,7 +235,7 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack,
 
         outputStream.close()
 
-        return bitmap
+        return@withContext bitmap
     }
 
     private fun detectObjects(bitmap: Bitmap) {
