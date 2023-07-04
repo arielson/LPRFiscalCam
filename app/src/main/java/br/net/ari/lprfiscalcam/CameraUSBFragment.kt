@@ -51,12 +51,13 @@ private const val ARG_PARAM1 = "param1"
  * Use the [CameraUSBFragment.newInstance] factory method to
  * create an instance of this fragment.
  */
-class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack, ObjectDetectorHelper.DetectorListener  {
+class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack,
+    ObjectDetectorHelper.DetectorListener {
     private lateinit var mViewBinding: FragmentCameraUSBBinding
 
-    private var camera : MultiCameraClient.ICamera? = null
+    private var camera: MultiCameraClient.ICamera? = null
 
-    private lateinit var textViewTemperature : TextView
+    private lateinit var textViewTemperature: TextView
     private var intentfilter: IntentFilter? = null
 
     private lateinit var activity: CameraUSBActivity
@@ -122,7 +123,8 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack, ObjectDetector
 
         objectDetectorHelper = ObjectDetectorHelper(
             context = requireContext(),
-            objectDetectorListener = this)
+            objectDetectorListener = this
+        )
     }
 
     override fun getCameraView(): IAspectRatio {
@@ -242,6 +244,7 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack, ObjectDetector
             Log.e("detectObjects", "${ex.message}")
         }
     }
+
     private val broadcastreceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent) {
             val batteryTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0).toFloat() / 10
@@ -255,6 +258,34 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack, ObjectDetector
             val finalString = "Temp: $batteryTempString | Bat: $bt%"
 
             textViewTemperature.text = finalString
+
+            val camera = br.net.ari.lprfiscalcam.models.Camera()
+            val cameraId = sharedPreference.getLong("camera", 0)
+            camera.id = cameraId
+            camera.bateria = bt.toFloat()
+            camera.temperatura = batteryTemp
+
+            Utilities.service().setCamera(camera)
+                .enqueue(object : Callback<br.net.ari.lprfiscalcam.models.Camera?> {
+                    override fun onResponse(
+                        call: Call<br.net.ari.lprfiscalcam.models.Camera?>,
+                        response: Response<br.net.ari.lprfiscalcam.models.Camera?>
+                    ) {
+                        if (!response.isSuccessful) {
+                            val error = Utilities.analiseException(
+                                response.code(), response.raw().toString(),
+                                if (response.errorBody() != null) response.errorBody()!!
+                                    .string() else null,
+                                requireContext()
+                            )
+                            Log.e("ERRO POST", "$error")
+                        }
+                    }
+
+                    override fun onFailure(call: Call<br.net.ari.lprfiscalcam.models.Camera?>, t: Throwable) {
+                        t.printStackTrace()
+                    }
+                })
         }
     }
 
@@ -262,7 +293,8 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack, ObjectDetector
         placa: String,
         confiabilidade: Float,
         bitmapPlaca: Bitmap,
-        bitmapVeiculo: Bitmap
+        bitmapVeiculo: Bitmap,
+        aferidor: Int
     ) {
         Log.d("Placa:", placa)
 
@@ -272,8 +304,10 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack, ObjectDetector
         veiculoInput.fiscalizacaoId = CameraUSBActivity.fiscalizacaoId
         veiculoInput.dispositivo = Utilities.getDeviceName()
         veiculoInput.cameraId = cameraId
+        veiculoInput.confianca = confiabilidade.toDouble()
         veiculoInput.latitude = activity.latitude
         veiculoInput.longitude = activity.longitude
+        veiculoInput.aferidor = aferidor
         Utilities.service()
             .setVeiculo(veiculoInput)
             .enqueue(object : Callback<Veiculo?> {
@@ -311,16 +345,7 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack, ObjectDetector
                                     Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
                                 veiculo.foto2 = veiculoImageBase64
 
-                                val byteArrayOutputStream = ByteArrayOutputStream()
-                                bitmapPlaca.compress(
-                                    Bitmap.CompressFormat.JPEG,
-                                    100,
-                                    byteArrayOutputStream
-                                )
-                                val byteArray: ByteArray =
-                                    byteArrayOutputStream.toByteArray()
-                                val plateImageBase64 =
-                                    Base64.encodeToString(byteArray, Base64.NO_WRAP)
+                                val plateImageBase64 = Utilities.bitmapToBase64(bitmapPlaca)
                                 veiculo.foto1 = plateImageBase64
 
                                 Utilities.service().postVeiculo(veiculo)
@@ -412,109 +437,127 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack, ObjectDetector
         imageWidth: Int,
         bitmap: Bitmap
     ) {
-        if (results?.any() == true) {
-            val result = results.first()
-            val bndbox = result.boundingBox
-            val confidence = result.categories.first().score
-            Log.d("Confiabilidade", "${confidence * 100} %")
-            Log.d("Tempo de inferência", "$inferenceTime ms")
-            var left = 0f
-            if (bndbox.left > 0)
-               left = bndbox.left
-            var top = 0f
-            if (bndbox.top > 0)
-                top = bndbox.top
-            try {
-                bndbox.left = left
-                bndbox.top = top
-                val placa = Utilities.cropBitmap(bitmap, bndbox)
-                val inputImage = InputImage.fromBitmap(placa, 0)
+        if (results != null) {
+            for (result in results) {
+                val bndbox = result.boundingBox
+                val confidence = result.categories.first().score
+                Log.d("Confiabilidade", "${confidence * 100} %")
+                Log.d("Tempo de inferência", "$inferenceTime ms")
+                var left = 0f
+                if (bndbox.left > 0)
+                    left = bndbox.left
+                var top = 0f
+                if (bndbox.top > 0)
+                    top = bndbox.top
+                try {
+                    bndbox.left = left
+                    bndbox.top = top
+                    val placa = Utilities.cropBitmap(bitmap, bndbox)
+                    val inputImage = InputImage.fromBitmap(placa, 0)
 
-                recognizer.process(inputImage)
-                    .addOnSuccessListener { visionText ->
-                        var placaTexto = ""
-                        for (textBlock in visionText.textBlocks) {
-                            for (line in textBlock.lines) {
-                                Log.d("LINHA", "${line.text} - ${line.confidence}")
-                                val ocrConfidence = sharedPreference.getFloat("ocrconfidence", 0.95f)
-                                if (line.confidence >= ocrConfidence)
-                                    placaTexto += line.text
+                    recognizer.process(inputImage)
+                        .addOnSuccessListener { visionText ->
+                            var placaTexto = ""
+                            for (textBlock in visionText.textBlocks) {
+                                for (line in textBlock.lines) {
+                                    Log.d("LINHA", "${line.text} - ${line.confidence}")
+                                    val ocrConfidence =
+                                        sharedPreference.getFloat("ocrconfidence", 0.95f)
+                                    if (line.confidence >= ocrConfidence)
+                                        placaTexto += line.text
+                                }
                             }
-                        }
-                        val placaNormalizada = Utilities.normalizePlate(placaTexto)
-                        Log.d("PLACA NORMALIZADA", placaNormalizada)
+                            val placaNormalizada = Utilities.normalizePlate(placaTexto)
+                            Log.d("PLACA NORMALIZADA", placaNormalizada)
 
-                        val isBrasil = Utilities.validateBrazilianLicensePlate(placaNormalizada)
-                        if (isBrasil) {
-                            Log.d("PLACA FINAL", placaNormalizada)
-                            limparPlacas()
-                            if (!placas.any { it.placa == placaNormalizada }) {
-                                val placaDTO = plateDTO()
-                                placaDTO.placa = placaNormalizada
-                                placaDTO.data = LocalDateTime.now()
+                            val isBrasil = Utilities.validateBrazilianLicensePlate(placaNormalizada)
+                            if (isBrasil) {
+                                Log.d("PLACA FINAL", placaNormalizada)
+                                limparPlacas()
+                                if (!placas.any { it.placa == placaNormalizada }) {
+                                    val placaDTO = plateDTO()
+                                    placaDTO.placa = placaNormalizada
+                                    placaDTO.data = LocalDateTime.now()
 
-                                placas.add(placaDTO)
+                                    placas.add(placaDTO)
 
+                                    val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
+                                    sendPlate(placaNormalizada, confidence, placa, veiculoBitmap, 1)
+                                }
+                            } else if (!isPost) {
+                                isPost = true
                                 val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
-                                sendPlate(placaNormalizada, confidence, placa, veiculoBitmap)
-                            }
-                        } else if (!isPost) {
-                            isPost = true
-                            val cameraId = sharedPreference.getLong("camera", 0)
-                            val veiculoInput = Veiculo()
-                            veiculoInput.fiscalizacaoId = CameraActivity.fiscalizacao.id
-                            veiculoInput.cameraId = cameraId
-                            veiculoInput.foto1 = Utilities.bitmapToBase64(placa)
-                            Utilities.service().getPlaca(veiculoInput).enqueue(object : Callback<Veiculo?> {
-                                override fun onResponse(
-                                    call: Call<Veiculo?>,
-                                    response: Response<Veiculo?>
-                                ) {
-                                    if (response.isSuccessful && response.body() != null) {
-                                        val veiculo = response.body()!!
-                                        if (veiculo.placa != null) {
-                                            limparPlacas()
-                                            if (!placas.any { it.placa == veiculo.placa }) {
-                                                val placaDTO = plateDTO()
-                                                placaDTO.placa = veiculo.placa
-                                                placaDTO.data = LocalDateTime.now()
+                                val placaBitmap: Bitmap = placa.copy(placa.config, true)
+                                val cameraId = sharedPreference.getLong("camera", 0)
+                                val veiculoInput = Veiculo()
+                                veiculoInput.fiscalizacaoId = CameraUSBActivity.fiscalizacaoId
+                                veiculoInput.cameraId = cameraId
+                                veiculoInput.foto1 = Utilities.bitmapToBase64(placaBitmap)
+                                Utilities.service().getPlaca(veiculoInput)
+                                    .enqueue(object : Callback<Veiculo?> {
+                                        override fun onResponse(
+                                            call: Call<Veiculo?>,
+                                            response: Response<Veiculo?>
+                                        ) {
+                                            if (response.isSuccessful && response.body() != null) {
+                                                val veiculo = response.body()!!
+                                                if (veiculo.placa != null) {
+                                                    Log.d("Foto Placa", "${veiculo.placa}")
+                                                    limparPlacas()
+                                                    if (!placas.any { it.placa == veiculo.placa }) {
+                                                        val placaDTO = plateDTO()
+                                                        placaDTO.placa = veiculo.placa
+                                                        placaDTO.data = LocalDateTime.now()
 
-                                                placas.add(placaDTO)
-
-                                                val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
-                                                sendPlate(veiculo.placa!!, confidence, placa, veiculoBitmap)
+                                                        placas.add(placaDTO)
+                                                        sendPlate(
+                                                            veiculo.placa!!,
+                                                            confidence,
+                                                            placaBitmap,
+                                                            veiculoBitmap,
+                                                            2
+                                                        )
+                                                        isPost = false
+                                                    } else
+                                                        isPost = false
+                                                } else
+                                                    isPost = false
+                                            } else {
+                                                isPost = false
+                                                val error = Utilities.analiseException(
+                                                    response.code(), response.raw().toString(),
+                                                    if (response.errorBody() != null) response.errorBody()!!
+                                                        .string() else null,
+                                                    requireContext()
+                                                )
+                                                Log.e("ERRO POST", "$error")
                                             }
                                         }
-                                    } else {
-                                        val error = Utilities.analiseException(
-                                            response.code(), response.raw().toString(),
-                                            if (response.errorBody() != null) response.errorBody()!!
-                                                .string() else null,
-                                            requireContext()
-                                        )
-                                        Log.e("ERRO POST", "$error")
-                                    }
-                                    isPost = false
-                                }
 
-                                override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
-                                    t.printStackTrace()
-                                    isPost = false
-                                }
-                            })
+                                        override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
+                                            isPost = false
+                                            t.printStackTrace()
+                                        }
+                                    })
+                            }
                         }
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e("ERRO", e.message!!)
-                    }
-            } catch (exc: Exception) {
-                Log.e("Erro", "Error $exc")
+                        .addOnFailureListener { e ->
+                            Log.e("ERRO", e.message!!)
+                        }
+                } catch (exc: Exception) {
+                    Log.e("Erro", "Error $exc")
+                }
             }
         }
     }
 
     fun limparPlacas() {
         val samePlateDelay = sharedPreference.getInt("sameplatedelay", 500)
-        placas.removeAll { Utilities.getSecondsBetweenDates(it.data!!, LocalDateTime.now()) > samePlateDelay }
+        placas.removeAll {
+            Utilities.getSecondsBetweenDates(
+                it.data!!,
+                LocalDateTime.now()
+            ) > samePlateDelay
+        }
     }
 }
