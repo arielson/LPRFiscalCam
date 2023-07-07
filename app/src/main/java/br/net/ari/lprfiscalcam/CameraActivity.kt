@@ -88,6 +88,8 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
     private lateinit var textViewZoom: TextView
     private lateinit var seekBarFoco: SeekBar
     private lateinit var textViewFoco: TextView
+    private lateinit var buttonFocoMenos: Button
+    private lateinit var buttonFocoMais: Button
     private lateinit var textViewBrilho: TextView
     private lateinit var textViewPlateLog: TextView
     private lateinit var mediaPlayer: MediaPlayer
@@ -220,8 +222,20 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         textViewZoom = findViewById(R.id.textViewZoom)
         seekBarFoco = findViewById(R.id.seekBarFoco)
         textViewFoco = findViewById(R.id.textViewFoco)
+        buttonFocoMais = findViewById(R.id.buttonFocoMais)
+        buttonFocoMenos = findViewById(R.id.buttonFocoMenos)
         seekBarBrilho = findViewById(R.id.seekBarBrilho)
         textViewBrilho = findViewById(R.id.textViewBrilho)
+
+        buttonFocoMenos.setOnClickListener {
+            if (seekBarFoco.progress > seekBarFoco.min)
+                changeFoco(seekBarFoco.progress - 1)
+        }
+
+        buttonFocoMais.setOnClickListener {
+            if (seekBarFoco.progress < seekBarFoco.max)
+                changeFoco(seekBarFoco.progress + 1)
+        }
 
         val buttonClose = findViewById<Button>(R.id.buttonClose)
         buttonClose.setOnClickListener {
@@ -465,7 +479,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         if (sharedPreference.contains("foco")) {
             val progress = sharedPreference.getInt("foco", 0)
             seekBarFoco.progress = progress
-            val text = "ZOOM [$progress]"
+            val text = "FOCO [$progress]"
             textViewFoco.text = text
             if (minimumLens != null) {
                 minimumLensNum = progress.toFloat() * minimumLens!! / 100
@@ -483,6 +497,31 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                     Camera2CameraControl.from(cameraControl!!)
                 camera2CameraControl.captureRequestOptions = captureRequestOptions
             }
+        }
+    }
+
+    @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
+    private fun changeFoco(progress: Int) {
+        if (minimumLens != null) {
+            minimumLensNum = progress.toFloat() * minimumLens!! / 100
+            val captureRequestOptions = CaptureRequestOptions.Builder()
+                .setCaptureRequestOption(
+                    CaptureRequest.CONTROL_AF_MODE,
+                    CameraMetadata.CONTROL_AF_MODE_OFF
+                )
+                .setCaptureRequestOption(
+                    CaptureRequest.LENS_FOCUS_DISTANCE,
+                    minimumLensNum!!
+                )
+                .build()
+            val camera2CameraControl: Camera2CameraControl =
+                Camera2CameraControl.from(cameraControl!!)
+            camera2CameraControl.captureRequestOptions = captureRequestOptions
+            seekBarFoco.progress = progress
+            editor.putInt("foco", progress)
+            editor.apply()
+            val text = "FOCO [$progress]"
+            textViewFoco.text = text
         }
     }
 
