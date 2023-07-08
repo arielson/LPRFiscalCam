@@ -81,7 +81,7 @@ object Utilities {
     fun cropBitmap(bitmap: Bitmap, rect: RectF): Bitmap =
         Bitmap.createBitmap(bitmap, rect.left.toInt(), rect.top.toInt(), rect.width().toInt(), rect.height().toInt())
 
-    fun getScaledImage(bitmapImage: Bitmap, newWidth: Int, newHeight: Int): ByteArray? {
+    fun getScaledImage(bitmapImage: Bitmap, newWidth: Int, newHeight: Int): ByteArray {
         val mutableBitmapImage = Bitmap.createScaledBitmap(bitmapImage, newWidth, newHeight, false)
         val outputStream = ByteArrayOutputStream()
         mutableBitmapImage.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)

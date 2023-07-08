@@ -167,9 +167,18 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack,
     }
 
     override fun getCameraRequest(): CameraRequest {
+        val previewSizes = camera?.getAllPreviewSizes()
+        val maxPreviewSize = previewSizes?.maxBy { it.width }
+        var width = 1280
+        var height = 720
+        if (maxPreviewSize != null) {
+            width = maxPreviewSize.width
+            height = maxPreviewSize.height
+        }
+
         return CameraRequest.Builder()
-            .setPreviewWidth(1280) // camera preview width
-            .setPreviewHeight(720) // camera preview height
+            .setPreviewWidth(width) // camera preview width
+            .setPreviewHeight(height) // camera preview height
             .setRenderMode(CameraRequest.RenderMode.OPENGL) // camera render mode
             .setDefaultRotateType(RotateType.ANGLE_0) // rotate camera image when opengl mode
             .setAudioSource(CameraRequest.AudioSource.NONE) // set audio source
