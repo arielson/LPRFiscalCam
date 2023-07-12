@@ -36,190 +36,200 @@
             android:background="#99000000"
             android:layout_height="match_parent" />
 
-        <LinearLayout
+        <ScrollView
             android:layout_weight="0.8"
             android:orientation="vertical"
             android:gravity="end"
-            android:padding="20dp"
             android:layout_width="0dp"
             android:layout_height="match_parent">
 
             <LinearLayout
-                android:background="#99000000"
-                android:layout_width="300dp"
                 android:orientation="vertical"
-                android:layout_height="wrap_content"
-                tools:ignore="UselessParent">
-
-                <TextView
-                    android:id="@+id/textViewTemperature"
-                    android:textSize="20sp"
-                    android:textColor="@color/white"
-                    android:layout_gravity="end"
-                    android:layout_marginEnd="20dp"
-                    android:layout_marginBottom="20dp"
-                    android:textAlignment="textEnd"
-                    android:layout_width="wrap_content"
-                    android:layout_height="25dp" />
-
-                <SeekBar
-                    android:id="@+id/seekBarZoom"
-                    android:progressDrawable="@drawable/seekbar_progress_style"
-                    android:thumb="@drawable/seekbar_thumb_shape"
-                    android:layout_width="300dp"
-                    android:layout_height="wrap_content" />
+                android:gravity="end"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
 
                 <LinearLayout
+                    android:background="#99000000"
                     android:layout_width="300dp"
-                    android:gravity="center"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="20dp"
-                    android:layout_height="wrap_content">
-
-                    <Button
-                        android:id="@+id/buttonZoomMenos"
-                        android:background="@drawable/minus"
-                        android:layout_marginEnd="10dp"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp" />
+                    android:orientation="vertical"
+                    android:layout_height="wrap_content"
+                    tools:ignore="UselessParent">
 
                     <TextView
-                        android:id="@+id/textViewZoom"
-                        android:scrollbars = "vertical"
+                        android:id="@+id/textViewTemperature"
+                        android:textSize="20sp"
                         android:textColor="@color/white"
-                        android:text="@string/zoom"
-                        android:textAlignment="center"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:layout_width="120dp"
-                        android:layout_height="wrap_content"/>
-
-                    <Button
-                        android:id="@+id/buttonZoomMais"
-                        android:background="@drawable/plus"
-                        android:layout_marginStart="10dp"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp" />
-
-                </LinearLayout>
-
-                <SeekBar
-                    android:id="@+id/seekBarFoco"
-                    android:progressDrawable="@drawable/seekbar_progress_style"
-                    android:thumb="@drawable/seekbar_thumb_shape"
-                    android:layout_width="300dp"
-                    android:layout_height="wrap_content" />
-
-                <LinearLayout
-                    android:layout_width="300dp"
-                    android:gravity="center"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="20dp"
-                    android:layout_height="wrap_content">
-
-                    <Button
-                        android:id="@+id/buttonFocoMenos"
-                        android:background="@drawable/minus"
-                        android:layout_marginEnd="10dp"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp" />
-
-                    <TextView
-                        android:id="@+id/textViewFoco"
-                        android:scrollbars = "vertical"
-                        android:textColor="@color/white"
-                        android:text="@string/foco"
-                        android:textAlignment="center"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:layout_width="120dp"
-                        android:layout_height="wrap_content"/>
-
-                    <Button
-                        android:id="@+id/buttonFocoMais"
-                        android:background="@drawable/plus"
-                        android:layout_marginStart="10dp"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp" />
-
-                </LinearLayout>
-
-                <SeekBar
-                    android:id="@+id/seekBarBrilho"
-                    android:progressDrawable="@drawable/seekbar_progress_style"
-                    android:thumb="@drawable/seekbar_thumb_shape"
-                    android:layout_width="300dp"
-                    android:layout_height="wrap_content" />
-
-                <LinearLayout
-                    android:layout_width="300dp"
-                    android:gravity="center"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="20dp"
-                    android:layout_height="wrap_content">
-
-                    <Button
-                        android:id="@+id/buttonBrilhoMenos"
-                        android:background="@drawable/minus"
-                        android:layout_marginEnd="10dp"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp" />
-
-                    <TextView
-                        android:id="@+id/textViewBrilho"
-                        android:scrollbars = "vertical"
-                        android:textColor="@color/white"
-                        android:text="@string/brilho"
-                        android:textAlignment="center"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:layout_width="120dp"
-                        android:layout_height="wrap_content"/>
-
-                    <Button
-                        android:id="@+id/buttonBrilhoMais"
-                        android:background="@drawable/plus"
-                        android:layout_marginStart="10dp"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp" />
-
-                </LinearLayout>
-
-                <LinearLayout
-                    android:orientation="horizontal"
-                    android:layout_gravity="start"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content">
-
-                    <Button
-                        android:id="@+id/buttonClose"
-                        android:background="@drawable/roundedbutton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
                         android:layout_gravity="end"
-                        android:text="@string/fechar"
-                        android:contentDescription="@string/fechar"
-                        android:layout_margin="8dp"
-                        style="?android:attr/buttonBarButtonStyle" />
-
-                    <Button
-                        android:id="@+id/buttonExit"
-                        android:textColor="@color/RED"
-                        android:textStyle="bold"
-                        android:background="@drawable/roundedbutton"
+                        android:layout_marginTop="5dp"
+                        android:layout_marginEnd="20dp"
+                        android:layout_marginBottom="20dp"
+                        android:textAlignment="textEnd"
                         android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="end"
-                        android:text="@string/sair"
-                        android:contentDescription="@string/sair"
-                        android:layout_margin="8dp"
-                        style="?android:attr/buttonBarButtonStyle" />
+                        android:layout_height="25dp" />
+
+                    <SeekBar
+                        android:id="@+id/seekBarZoom"
+                        android:progressDrawable="@drawable/seekbar_progress_style"
+                        android:thumb="@drawable/seekbar_thumb_shape"
+                        android:layout_width="300dp"
+                        android:layout_height="wrap_content" />
+
+                    <LinearLayout
+                        android:layout_width="300dp"
+                        android:gravity="center"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="20dp"
+                        android:layout_height="wrap_content">
+
+                        <Button
+                            android:id="@+id/buttonZoomMenos"
+                            android:background="@drawable/minus"
+                            android:layout_marginEnd="10dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp" />
+
+                        <TextView
+                            android:id="@+id/textViewZoom"
+                            android:scrollbars = "vertical"
+                            android:textColor="@color/white"
+                            android:text="@string/zoom"
+                            android:textAlignment="center"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:layout_width="120dp"
+                            android:layout_height="wrap_content"/>
+
+                        <Button
+                            android:id="@+id/buttonZoomMais"
+                            android:background="@drawable/plus"
+                            android:layout_marginStart="10dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp" />
+
+                    </LinearLayout>
+
+                    <SeekBar
+                        android:id="@+id/seekBarFoco"
+                        android:progressDrawable="@drawable/seekbar_progress_style"
+                        android:thumb="@drawable/seekbar_thumb_shape"
+                        android:layout_width="300dp"
+                        android:layout_height="wrap_content" />
+
+                    <LinearLayout
+                        android:layout_width="300dp"
+                        android:gravity="center"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="20dp"
+                        android:layout_height="wrap_content">
+
+                        <Button
+                            android:id="@+id/buttonFocoMenos"
+                            android:background="@drawable/minus"
+                            android:layout_marginEnd="10dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp" />
+
+                        <TextView
+                            android:id="@+id/textViewFoco"
+                            android:scrollbars = "vertical"
+                            android:textColor="@color/white"
+                            android:text="@string/foco"
+                            android:textAlignment="center"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:layout_width="120dp"
+                            android:layout_height="wrap_content"/>
+
+                        <Button
+                            android:id="@+id/buttonFocoMais"
+                            android:background="@drawable/plus"
+                            android:layout_marginStart="10dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp" />
+
+                    </LinearLayout>
+
+                    <SeekBar
+                        android:id="@+id/seekBarBrilho"
+                        android:progressDrawable="@drawable/seekbar_progress_style"
+                        android:thumb="@drawable/seekbar_thumb_shape"
+                        android:layout_width="300dp"
+                        android:layout_height="wrap_content" />
+
+                    <LinearLayout
+                        android:layout_width="300dp"
+                        android:gravity="center"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="20dp"
+                        android:layout_height="wrap_content">
+
+                        <Button
+                            android:id="@+id/buttonBrilhoMenos"
+                            android:background="@drawable/minus"
+                            android:layout_marginEnd="10dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp" />
+
+                        <TextView
+                            android:id="@+id/textViewBrilho"
+                            android:scrollbars = "vertical"
+                            android:textColor="@color/white"
+                            android:text="@string/brilho"
+                            android:textAlignment="center"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:layout_width="120dp"
+                            android:layout_height="wrap_content"/>
+
+                        <Button
+                            android:id="@+id/buttonBrilhoMais"
+                            android:background="@drawable/plus"
+                            android:layout_marginStart="10dp"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp" />
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:orientation="horizontal"
+                        android:layout_gravity="start"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content">
+
+                        <Button
+                            android:id="@+id/buttonClose"
+                            android:background="@drawable/roundedbutton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="end"
+                            android:text="@string/fechar"
+                            android:contentDescription="@string/fechar"
+                            android:layout_margin="8dp"
+                            style="?android:attr/buttonBarButtonStyle" />
+
+                        <Button
+                            android:id="@+id/buttonExit"
+                            android:textColor="@color/RED"
+                            android:textStyle="bold"
+                            android:background="@drawable/roundedbutton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="end"
+                            android:text="@string/sair"
+                            android:contentDescription="@string/sair"
+                            android:layout_margin="8dp"
+                            style="?android:attr/buttonBarButtonStyle" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
 
             </LinearLayout>
 
-        </LinearLayout>
+        </ScrollView>
+
+
 
     </LinearLayout>
 

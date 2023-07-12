@@ -77,7 +77,6 @@ class MainActivity : AppCompatActivity() {
                                     ) {
                                         relativeLayoutLoading.visibility = View.GONE
                                         if (response.isSuccessful) {
-
                                             editor.putString("login", login)
                                             editor.putString("senha", senhaLimpa)
                                             editor.apply()

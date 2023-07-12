@@ -27,7 +27,13 @@ class FiscalizacaoAdapter(
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
         val label = super.getView(position, convertView, parent) as TextView
         label.setTextColor(Color.BLACK)
-        val texto = String.format("%s - %s", values[position].codigo, values[position].titulo)
+        val texto = String.format(
+            "%s - %s [%s - %s]",
+            values[position].codigo,
+            values[position].titulo,
+            values[position].dataInicio,
+            values[position].dataFim
+        )
         label.text = texto
         return label
     }
