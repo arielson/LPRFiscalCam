@@ -11,6 +11,7 @@ import android.view.Window
 import android.widget.Button
 import android.widget.TextView
 import br.net.ari.lprfiscalcam.R
+import br.net.ari.lprfiscalcam.data.Resolution
 import br.net.ari.lprfiscalcam.interfaces.APIService
 import br.net.ari.lprfiscalcam.models.Cliente
 import com.google.gson.GsonBuilder
@@ -79,7 +80,13 @@ object Utilities {
     }
 
     fun cropBitmap(bitmap: Bitmap, rect: RectF): Bitmap =
-        Bitmap.createBitmap(bitmap, rect.left.toInt(), rect.top.toInt(), rect.width().toInt(), rect.height().toInt())
+        Bitmap.createBitmap(
+            bitmap,
+            rect.left.toInt(),
+            rect.top.toInt(),
+            rect.width().toInt(),
+            rect.height().toInt()
+        )
 
     fun getScaledImage(bitmapImage: Bitmap, newWidth: Int, newHeight: Int): ByteArray {
         val mutableBitmapImage = Bitmap.createScaledBitmap(bitmapImage, newWidth, newHeight, false)
@@ -176,9 +183,9 @@ object Utilities {
         return "#000000"
     }
 
-    fun greatestCommonFactor(width: Int, height: Int): Int {
-        return if (height == 0) width else greatestCommonFactor(height, width % height)
-    }
+//    fun greatestCommonFactor(width: Int, height: Int): Int {
+//        return if (height == 0) width else greatestCommonFactor(height, width % height)
+//    }
 
     const val brasilRegex = "[A-Z]{3}\\d[A-Z0-9]{1}\\d{2}"
 
@@ -283,16 +290,17 @@ object Utilities {
     }
 
     @Throws(IOException::class)
-    fun getFileFromAssets(context: Context, fileName: String): File = File(context.cacheDir, fileName)
-        .also {
-            if (!it.exists()) {
-                it.outputStream().use { cache ->
-                    context.assets.open(fileName).use { inputStream ->
-                        inputStream.copyTo(cache)
+    fun getFileFromAssets(context: Context, fileName: String): File =
+        File(context.cacheDir, fileName)
+            .also {
+                if (!it.exists()) {
+                    it.outputStream().use { cache ->
+                        context.assets.open(fileName).use { inputStream ->
+                            inputStream.copyTo(cache)
+                        }
                     }
                 }
             }
-        }
 
     fun getSimples(value: String): String {
         val decodedBytes: ByteArray = Base64.decode(value, Base64.DEFAULT)
@@ -313,9 +321,48 @@ object Utilities {
     }
 
     fun clearSharedPreferences(context: Context, sharedPreferencesName: String) {
-        val sharedPreferences = context.getSharedPreferences(sharedPreferencesName, Context.MODE_PRIVATE)
+        val sharedPreferences =
+            context.getSharedPreferences(sharedPreferencesName, Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
         editor.clear()
         editor.apply()
     }
+
+    fun resolutionCorrection(resolutions: MutableList<Resolution>): Resolution {
+        var width = 1280
+        var height = 720
+
+        val intersection = mutableListOf<Resolution>()
+        resolutions.forEach { size ->
+            if (resolutionsPermited.any { it.width == size.width && it.height == size.height })
+                intersection.add(size)
+        }
+
+        if (intersection.isNotEmpty()) {
+            val maxPreviewSize = intersection.maxBy { it.width }
+            width = maxPreviewSize.width
+            height = maxPreviewSize.height
+        }
+
+        return Resolution(width, height)
+    }
+
+    private val resolutionsPermited = arrayOf(
+        Resolution(3840, 2160),
+        Resolution(3264, 2448),
+        Resolution(3264, 1836),
+        Resolution(3840, 2160),
+        Resolution(3264, 2448),
+        Resolution(3264, 1836),
+        Resolution(1920, 1080),
+        Resolution(1280, 960),
+        Resolution(1280, 720),
+        Resolution(800, 600),
+        Resolution(720, 480),
+        Resolution(640, 480),
+        Resolution(720, 480),
+        Resolution(640, 480),
+        Resolution(352, 288),
+        Resolution(320, 240),
+    )
 }

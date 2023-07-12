@@ -35,6 +35,7 @@ import java.util.*
 import java.util.concurrent.Executors
 import android.util.Base64
 import android.view.*
+import br.net.ari.lprfiscalcam.data.Resolution
 import br.net.ari.lprfiscalcam.dto.plateDTO
 import br.net.ari.lprfiscalcam.models.Veiculo
 import com.google.mlkit.vision.common.InputImage
@@ -367,19 +368,16 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                         cameraCharacteristics?.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
                 }
 
-                val factor = Utilities.greatestCommonFactor(
-                    resources.displayMetrics.widthPixels,
-                    resources.displayMetrics.heightPixels
-                )
-                var widthRatio = resources.displayMetrics.widthPixels / factor
-                var heightRatio = resources.displayMetrics.heightPixels / factor
-
-                while (heightRatio < 1024) {
-                    widthRatio = (widthRatio * 1.5).toInt()
-                    heightRatio = (heightRatio * 1.5).toInt()
+                val streamConfigurationMap =
+                    cameraCharacteristics?.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+                val resolutions = streamConfigurationMap?.getOutputSizes(android.graphics.ImageFormat.JPEG)
+                val resolutionsCamera = mutableListOf<Resolution>()
+                resolutions?.forEach { size ->
+                    Log.d("Resolution", "${size.width} x ${size.height}")
+                    resolutionsCamera.add(Resolution(size.width, size.height))
                 }
-
-                val sizeRotated = Size(widthRatio, heightRatio)
+                val resolutionCorrect = Utilities.resolutionCorrection(resolutionsCamera)
+                val sizeRotated = Size(resolutionCorrect.width, resolutionCorrect.height)
 
                 val preview = Preview.Builder()
                     .setTargetResolution(sizeRotated)
