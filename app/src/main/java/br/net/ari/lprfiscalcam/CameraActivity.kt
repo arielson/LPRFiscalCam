@@ -273,11 +273,11 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         buttonClose.setOnClickListener {
             buttonClose.isEnabled = false
             cameraProvider.unbindAll()
-            Thread.sleep(100)
+            Thread.sleep(50)
             imageAnalyzer.clearAnalyzer()
-            Thread.sleep(100)
+            Thread.sleep(50)
             cameraExecutor.shutdown()
-            Thread.sleep(100)
+            Thread.sleep(50)
             finish()
         }
 
@@ -285,7 +285,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         buttonExit.setOnClickListener {
             buttonExit.isEnabled = false
             val builder = AlertDialog.Builder(this@CameraActivity)
-            builder.setMessage("Ao sair os dados de login, senha e operação serão limpos. Deseja continuar?")
+            builder.setMessage("Ao sair os dados de login, senha e operação serão limpos e a chave utilizada perderá o acesso por alguns dias. Deseja continuar?")
                 .setCancelable(false)
                 .setPositiveButton("Sim") { _, _ ->
                     val chave = sharedPreference.getString("chave", "")
@@ -619,11 +619,13 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                             }
 
                             Thread {
-                                val veiculoImage =
-                                    Utilities.getScaledImage(bitmapVeiculo, 640, 480)
-                                val veiculoImageBase64 =
-                                    Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
-                                veiculo.foto2 = veiculoImageBase64
+                                if (veiculo.pendencia?.contains("Roubo_e_Furto") == true) {
+                                    val veiculoImage =
+                                        Utilities.getScaledImage(bitmapVeiculo, 640, 480)
+                                    val veiculoImageBase64 =
+                                        Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
+                                    veiculo.foto2 = veiculoImageBase64
+                                }
 
                                 val plateImageBase64 = Utilities.bitmapToBase64(bitmapPlaca)
                                 veiculo.foto1 = plateImageBase64
@@ -790,30 +792,31 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
             camera.bateria = bt.toFloat()
             camera.temperatura = batteryTemp
 
-            Utilities.service().setCamera(camera)
-                .enqueue(object : Callback<br.net.ari.lprfiscalcam.models.Camera?> {
-                    override fun onResponse(
-                        call: Call<br.net.ari.lprfiscalcam.models.Camera?>,
-                        response: Response<br.net.ari.lprfiscalcam.models.Camera?>
-                    ) {
-                        if (!response.isSuccessful) {
-                            val error = Utilities.analiseException(
-                                response.code(), response.raw().toString(),
-                                if (response.errorBody() != null) response.errorBody()!!
-                                    .string() else null,
-                                applicationContext
-                            )
-                            Log.e("ERRO POST", "$error")
+            if (cameraId > 0)
+                Utilities.service().setCamera(camera)
+                    .enqueue(object : Callback<br.net.ari.lprfiscalcam.models.Camera?> {
+                        override fun onResponse(
+                            call: Call<br.net.ari.lprfiscalcam.models.Camera?>,
+                            response: Response<br.net.ari.lprfiscalcam.models.Camera?>
+                        ) {
+                            if (!response.isSuccessful) {
+                                val error = Utilities.analiseException(
+                                    response.code(), response.raw().toString(),
+                                    if (response.errorBody() != null) response.errorBody()!!
+                                        .string() else null,
+                                    applicationContext
+                                )
+                                Log.e("ERRO POST", "$error")
+                            }
                         }
-                    }
 
-                    override fun onFailure(
-                        call: Call<br.net.ari.lprfiscalcam.models.Camera?>,
-                        t: Throwable
-                    ) {
-                        t.printStackTrace()
-                    }
-                })
+                        override fun onFailure(
+                            call: Call<br.net.ari.lprfiscalcam.models.Camera?>,
+                            t: Throwable
+                        ) {
+                            t.printStackTrace()
+                        }
+                    })
         }
     }
 
