@@ -16,9 +16,9 @@ import org.tensorflow.lite.task.gms.vision.TfLiteVision
 import org.tensorflow.lite.task.gms.vision.detector.Detection
 import org.tensorflow.lite.task.gms.vision.detector.ObjectDetector
 import java.io.File
-import java.io.IOException
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
+//import java.io.IOException
+//import java.nio.ByteBuffer
+//import java.nio.ByteOrder
 
 
 class ObjectDetectorHelper (
@@ -30,7 +30,7 @@ class ObjectDetectorHelper (
 
     private val tag = "ObjectDetectionHelper"
 
-    private val binData: Int = 1
+    private val binData: Int = 0
 
     private var objectDetector: ObjectDetector? = null
     private var gpuSupported = false
@@ -83,7 +83,8 @@ class ObjectDetectorHelper (
                 model = Constants.b1
             }
 
-            val modelFile =  Utilities.getFileFromAssets(context, Utilities.getSimples(model))
+            val filename = Utilities.getSimples(model)
+            val modelFile =  Utilities.getFileFromAssets(context, filename)
             val modelTemp = Utilities.getSimples(Constants.t)
             val selvagem = Selvagem()
             val modelTempPath = "${modelFile.parent}/$modelTemp"
@@ -91,7 +92,7 @@ class ObjectDetectorHelper (
             selvagem.dsimples(modelFile.absolutePath, modelTempPath, pass)
             val modelTempFile = File(modelTempPath)
 
-//            if (isNnapiAvailableString("lpr-ef1.tflite")) {
+//            if (isNnapiAvailable(File("lpr-ef0.tflite"))) {
 //                baseOptionsBuilder.useNnapi()
 //            }
 
@@ -105,7 +106,7 @@ class ObjectDetectorHelper (
                 ObjectDetector.createFromFileAndOptions(modelTempFile, optionsBuilder.build())
             modelTempFile.delete()
 //            objectDetector =
-//                ObjectDetector.createFromFileAndOptions(context, "lpr-ef1.tflite", optionsBuilder.build())
+//                ObjectDetector.createFromFileAndOptions(context, "lpr-ef0.tflite", optionsBuilder.build())
         } catch (e: Exception) {
             objectDetectorListener.onError(
                 "Object detector failed to initialize. See error logs for details"
@@ -129,6 +130,7 @@ class ObjectDetectorHelper (
         val imageProcessor = ImageProcessor.Builder().add(Rot90Op(-imageRotation / 90)).build()
 
         val tensorImage = imageProcessor.process(TensorImage.fromBitmap(image))
+//        val base64 = Utilities.bitmapToBase64(image)
 
         val results = objectDetector?.detect(tensorImage)
         inferenceTime = SystemClock.uptimeMillis() - inferenceTime

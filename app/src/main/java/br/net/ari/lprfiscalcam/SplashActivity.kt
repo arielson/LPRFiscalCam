@@ -16,7 +16,7 @@ class SplashActivity : AppCompatActivity() {
         setContentView(R.layout.activity_splash)
 
         //Gerar arquivo simples
-//        val lprFile = Utilities.getFileFromAssets(this, "lpr-ef1.tflite")
+//        val lprFile = Utilities.getFileFromAssets(this, "lpr-ef0.tflite")
 //        val lprFileCrypt = "${lprFile.parent}/lpr.data"
 //        val selvagem = Selvagem()
 //        selvagem.simples(lprFile.absolutePath, lprFileCrypt, "senha1237")
