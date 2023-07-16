@@ -6,10 +6,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.hardware.camera2.*
 import android.media.MediaPlayer
-import android.os.BatteryManager
-import android.os.Build
-import android.os.Bundle
-import android.os.Looper
+import android.os.*
 import android.text.Html
 import android.text.method.ScrollingMovementMethod
 import android.util.Log
@@ -895,6 +892,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                         sendPlate(placaNormalizada, confidence, placaInputImage.bitmapInternal!!, veiculoBitmap, 1)
                                     }
                                 } else if (!isPost) {
+                                    var postTime = SystemClock.uptimeMillis()
                                     isPost = true
                                     val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
                                     val cameraId = sharedPreference.getLong("camera", 0)
@@ -908,6 +906,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                                 call: Call<Veiculo?>,
                                                 response: Response<Veiculo?>
                                             ) {
+                                                isPost = false
                                                 if (response.isSuccessful && response.body() != null) {
                                                     val veiculo = response.body()!!
                                                     if (veiculo.placa != null) {
@@ -926,13 +925,15 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                                                 veiculoBitmap,
                                                                 2
                                                             )
-                                                            isPost = false
-                                                        } else
-                                                            isPost = false
-                                                    } else
-                                                        isPost = false
+                                                            postTime = SystemClock.uptimeMillis() - postTime
+                                                        } else {
+                                                            postTime = SystemClock.uptimeMillis() - postTime
+                                                        }
+                                                    } else {
+                                                        postTime = SystemClock.uptimeMillis() - postTime
+                                                    }
                                                 } else {
-                                                    isPost = false
+                                                    postTime = SystemClock.uptimeMillis() - postTime
                                                     val error = Utilities.analiseException(
                                                         response.code(), response.raw().toString(),
                                                         if (response.errorBody() != null) response.errorBody()!!
@@ -941,6 +942,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                                     )
                                                     Log.e("ERRO POST", "$error")
                                                 }
+                                                Log.d("Tempo de post", "$postTime ms")
                                             }
 
                                             override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
