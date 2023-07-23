@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId "br.net.ari.lprfiscalcam"
-        minSdk 21
+        minSdk 26
         targetSdk 33
         versionCode 26
         versionName "2.0.9"
