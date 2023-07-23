@@ -212,9 +212,13 @@ object Utilities {
         result = result.replace("BRASIL", "")
         result = result.replace("RASIL", "")
         result = result.replace("ASIL", "")
+        result = result.replace("|", "I")
+        result = result.replace(" ", "")
+        result = result.replace("-", "")
+        result = result.replace("·", "")
         val resultMatch = getMatchedString(result, Regex(brasilRegex))
         if (resultMatch != null)
-            return resultMatch.toString()
+            return resultMatch.take(7)
         else {
             var temp = result
             if (temp.length == 7) {
@@ -234,7 +238,7 @@ object Utilities {
             }
             val resultMatch2 = getMatchedString(temp, Regex(brasilRegex))
             if (resultMatch2 != null)
-                return resultMatch2.toString()
+                return resultMatch2.take(7)
         }
 
         return ""

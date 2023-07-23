@@ -20,7 +20,7 @@ import androidx.fragment.app.Fragment
 import br.net.ari.lprfiscalcam.core.ObjectDetectorHelper
 import br.net.ari.lprfiscalcam.core.Utilities
 import br.net.ari.lprfiscalcam.databinding.FragmentCameraUSBBinding
-import br.net.ari.lprfiscalcam.dto.plateDTO
+import br.net.ari.lprfiscalcam.dto.PlateDTO
 import br.net.ari.lprfiscalcam.models.Veiculo
 import com.google.android.gms.location.*
 import com.google.mlkit.vision.common.InputImage
@@ -73,7 +73,7 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack,
 
     private lateinit var recognizer: TextRecognizer
 
-    private var placas = mutableListOf<plateDTO>()
+    private var placas = mutableListOf<PlateDTO>()
 
     private var logText = ""
 
@@ -485,7 +485,7 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack,
                                 Log.d("PLACA FINAL", placaNormalizada)
                                 limparPlacas()
                                 if (!placas.any { it.placa == placaNormalizada }) {
-                                    val placaDTO = plateDTO()
+                                    val placaDTO = PlateDTO()
                                     placaDTO.placa = placaNormalizada
                                     placaDTO.data = LocalDateTime.now()
 
@@ -515,7 +515,7 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack,
                                                     Log.d("Foto Placa", "${veiculo.placa}")
                                                     limparPlacas()
                                                     if (!placas.any { it.placa == veiculo.placa }) {
-                                                        val placaDTO = plateDTO()
+                                                        val placaDTO = PlateDTO()
                                                         placaDTO.placa = veiculo.placa
                                                         placaDTO.data = LocalDateTime.now()
 

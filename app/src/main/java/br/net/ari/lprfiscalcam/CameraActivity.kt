@@ -33,7 +33,7 @@ import java.util.concurrent.Executors
 import android.util.Base64
 import android.view.*
 import br.net.ari.lprfiscalcam.data.Resolution
-import br.net.ari.lprfiscalcam.dto.plateDTO
+import br.net.ari.lprfiscalcam.dto.PlateDTO
 import br.net.ari.lprfiscalcam.models.Veiculo
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -43,6 +43,7 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.time.LocalDateTime
+import kotlin.properties.Delegates
 
 
 class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListener {
@@ -99,9 +100,11 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
     private lateinit var recognizer: TextRecognizer
 
-    private var placas = mutableListOf<plateDTO>()
+    private var placas = mutableListOf<PlateDTO>()
 
     private var logText = ""
+
+    private var ocrConfidence by Delegates.notNull<Float>()
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -195,6 +198,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
         sharedPreference = getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
         editor = sharedPreference.edit()
+        ocrConfidence = sharedPreference.getFloat("ocrconfidence", 0.95f)
 
         val relativeLayoutMainContainer =
             findViewById<RelativeLayout>(R.id.relativeLayoutMainContainer)
@@ -570,7 +574,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         placa: String,
         confiabilidade: Float,
         bitmapPlaca: Bitmap,
-        bitmapVeiculo: Bitmap,
+        base64Veiculo: String,
         aferidor: Int
     ) {
         Log.d("Placa:", placa)
@@ -616,16 +620,9 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                             }
 
                             Thread {
-                                if (veiculo.pendencia?.contains("Roubo_e_Furto") == true) {
-                                    val veiculoImage =
-                                        Utilities.getScaledImage(bitmapVeiculo, 640, 480)
-                                    val veiculoImageBase64 =
-                                        Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
-                                    veiculo.foto2 = veiculoImageBase64
-                                }
-
                                 val plateImageBase64 = Utilities.bitmapToBase64(bitmapPlaca)
                                 veiculo.foto1 = plateImageBase64
+                                veiculo.foto2 = base64Veiculo
 
                                 Utilities.service().postVeiculo(veiculo)
                                     .enqueue(object : Callback<String?> {
@@ -864,14 +861,18 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
                     recognizer.process(placaInputImage)
                             .addOnSuccessListener { visionText ->
+                                val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
+                                val veiculoImage = Utilities.getScaledImage(veiculoBitmap, 640, 480)
+                                val veiculoImageBase64 = Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
                                 var placaTexto = ""
                                 for (textBlock in visionText.textBlocks) {
                                     for (line in textBlock.lines) {
                                         Log.d("LINHA", "${line.text} - ${line.confidence}")
-                                        val ocrConfidence =
-                                            sharedPreference.getFloat("ocrconfidence", 0.95f)
+
                                         if (line.confidence >= ocrConfidence)
                                             placaTexto += line.text
+                                        else
+                                            Log.d("ERRO CONFIANÇA", "${line.text} - ${line.confidence} | $ocrConfidence")
                                     }
                                 }
                                 val placaNormalizada = Utilities.normalizePlate(placaTexto)
@@ -882,19 +883,17 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                     Log.d("PLACA FINAL", placaNormalizada)
                                     limparPlacas()
                                     if (!placas.any { it.placa == placaNormalizada }) {
-                                        val placaDTO = plateDTO()
+                                        val placaDTO = PlateDTO()
                                         placaDTO.placa = placaNormalizada
                                         placaDTO.data = LocalDateTime.now()
 
                                         placas.add(placaDTO)
 
-                                        val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
-                                        sendPlate(placaNormalizada, confidence, placaInputImage.bitmapInternal!!, veiculoBitmap, 1)
+                                        sendPlate(placaNormalizada, confidence, placaInputImage.bitmapInternal!!, veiculoImageBase64, 1)
                                     }
                                 } else if (!isPost) {
                                     var postTime = SystemClock.uptimeMillis()
                                     isPost = true
-                                    val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
                                     val cameraId = sharedPreference.getLong("camera", 0)
                                     val veiculoInput = Veiculo()
                                     veiculoInput.fiscalizacaoId = fiscalizacao.id
@@ -913,7 +912,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                                         Log.d("Foto Placa", "${veiculo.placa}")
                                                         limparPlacas()
                                                         if (!placas.any { it.placa == veiculo.placa }) {
-                                                            val placaDTO = plateDTO()
+                                                            val placaDTO = PlateDTO()
                                                             placaDTO.placa = veiculo.placa
                                                             placaDTO.data = LocalDateTime.now()
 
@@ -922,7 +921,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                                                 veiculo.placa!!,
                                                                 confidence,
                                                                 placaInputImage.bitmapInternal!!,
-                                                                veiculoBitmap,
+                                                                veiculoImageBase64,
                                                                 2
                                                             )
                                                             postTime = SystemClock.uptimeMillis() - postTime
