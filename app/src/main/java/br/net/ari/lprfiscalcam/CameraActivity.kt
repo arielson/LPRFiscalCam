@@ -49,6 +49,7 @@ import kotlin.properties.Delegates
 class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListener {
     companion object {
         lateinit var fiscalizacao: Fiscalizacao
+        var binData: Int = 0
     }
 
     private lateinit var imageAnalyzer: ImageAnalysis
@@ -97,6 +98,9 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
     private lateinit var buttonBrilhoMais: Button
     private lateinit var textViewPlateLog: TextView
     private lateinit var mediaPlayer: MediaPlayer
+
+    @SuppressLint("UseSwitchCompatOrMaterialCode")
+    private lateinit var switchNoite: Switch
 
     private lateinit var recognizer: TextRecognizer
 
@@ -238,6 +242,18 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         buttonBrilhoMais = findViewById(R.id.buttonBrilhoMais)
         textViewBrilho = findViewById(R.id.textViewBrilho)
 
+        switchNoite = findViewById(R.id.switchNoite)
+        switchNoite.isChecked = binData == 1
+        switchNoite.setOnCheckedChangeListener { _, isChecked ->
+            var binData = 0
+            if (isChecked)
+                binData = 1
+            CameraActivity.binData = binData
+            val intent = Intent(activity, CameraActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
+
         buttonZoomMenos.setOnClickListener {
             if (seekBarZoom.progress > seekBarZoom.min)
                 changeZoom(seekBarZoom.progress - 1)
@@ -350,6 +366,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
         objectDetectorHelper = ObjectDetectorHelper(
             context = this,
+            binData = binData,
             objectDetectorListener = this
         )
     }

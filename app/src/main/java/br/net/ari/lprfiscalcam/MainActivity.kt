@@ -275,6 +275,7 @@ class MainActivity : AppCompatActivity() {
                                 val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
                                 if (usbManager.deviceList.isEmpty()) {
                                     CameraActivity.fiscalizacao = fiscalizacao
+                                    CameraActivity.binData = 0
                                     val intent = Intent(activity, CameraActivity::class.java)
                                     startActivity(intent)
                                 } else {

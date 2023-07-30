@@ -221,6 +221,16 @@
                             android:layout_margin="8dp"
                             style="?android:attr/buttonBarButtonStyle" />
 
+                        <Switch
+                            android:id="@+id/switchNoite"
+                            android:textSize="24sp"
+                            android:textColor="@color/WHITE"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/noite"
+                            android:checked="false"
+                            tools:ignore="UseSwitchCompatOrMaterialXml" />
+
                     </LinearLayout>
 
                 </LinearLayout>
@@ -228,8 +238,6 @@
             </LinearLayout>
 
         </ScrollView>
-
-
 
     </LinearLayout>
 

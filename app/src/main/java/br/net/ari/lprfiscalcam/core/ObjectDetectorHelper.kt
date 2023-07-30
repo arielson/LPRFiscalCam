@@ -24,13 +24,12 @@ import java.io.File
 class ObjectDetectorHelper (
     private var numThreads: Int = -1,
     private var maxResults: Int = 5,
+    val binData: Int,
     val context: Context,
     val objectDetectorListener: DetectorListener
 ) {
 
     private val tag = "ObjectDetectionHelper"
-
-    private val binData: Int = 0
 
     private var objectDetector: ObjectDetector? = null
     private var gpuSupported = false

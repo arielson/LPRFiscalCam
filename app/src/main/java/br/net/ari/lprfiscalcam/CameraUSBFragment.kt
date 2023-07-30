@@ -123,6 +123,7 @@ class CameraUSBFragment : CameraFragment(), IPreviewDataCallBack,
 
         objectDetectorHelper = ObjectDetectorHelper(
             context = requireContext(),
+            binData = 0,
             objectDetectorListener = this
         )
     }
