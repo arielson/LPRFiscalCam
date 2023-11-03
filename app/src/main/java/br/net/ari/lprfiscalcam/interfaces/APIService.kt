@@ -21,8 +21,11 @@ interface APIService {
     @GET("v1/Parametro/GetDataAtualizacao")
     fun getDataAtualizacao(): Call<String?>
 
-    @GET("v1/Fiscalizacao/GetByCodigo/{codigo}")
-    fun getFiscalizacao(@Path("codigo") codigo: String?): Call<Fiscalizacao?>
+    @GET("v2/Fiscalizacao/GetByCodigoAndCamera/{codigo}/{cameraId}")
+    fun getFiscalizacao(
+        @Path("codigo") codigo: String?,
+        @Path("cameraId") cameraId: Long?
+    ): Call<Fiscalizacao?>
 
     @POST("v1/FiscalizacaoVeiculo/SetFromCameraANPR")
     fun setVeiculo(@Body veiculo: Veiculo?): Call<Veiculo?>
@@ -63,6 +66,7 @@ interface APIService {
 
     @PATCH("v1/Camera/AtualizaBateriaTemperaturaByChave")
     fun setCamera(@Body camera: Camera?): Call<Camera?>
+
     @PATCH("v2/Camera/AtualizaBateriaTemperaturaByChave")
     fun setCamera2(@Body camera: Camera?): Call<Camera?>
 }

@@ -210,6 +210,7 @@
 
                         <Button
                             android:id="@+id/buttonExit"
+                            android:visibility="gone"
                             android:textColor="@color/RED"
                             android:textStyle="bold"
                             android:background="@drawable/roundedbutton"

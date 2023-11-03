@@ -143,9 +143,10 @@ class MainActivity : AppCompatActivity() {
                                     )
                                 }
                                 editor.apply()
-
+                                val cameraId = sharedPreference.getLong("camera", 0)
                                 Utilities.service().getFiscalizacao(
-                                    textFieldCodigo.editText?.text.toString().uppercase(Locale.ROOT)
+                                    textFieldCodigo.editText?.text.toString()
+                                        .uppercase(Locale.ROOT), cameraId
                                 ).enqueue(object : Callback<Fiscalizacao?> {
                                     override fun onResponse(
                                         call: Call<Fiscalizacao?>,
