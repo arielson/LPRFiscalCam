@@ -805,7 +805,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
             camera.temperatura = batteryTemp
 
             if (cameraId > 0)
-                Utilities.service().setCamera(camera)
+                Utilities.service().setCamera2(camera)
                     .enqueue(object : Callback<br.net.ari.lprfiscalcam.models.Camera?> {
                         override fun onResponse(
                             call: Call<br.net.ari.lprfiscalcam.models.Camera?>,

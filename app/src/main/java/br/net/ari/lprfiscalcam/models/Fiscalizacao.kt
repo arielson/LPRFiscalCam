@@ -6,4 +6,5 @@ class Fiscalizacao {
     var codigo: String? = null
     var dataInicio: String? = null
     var dataFim: String? = null
+    var token: String? = null
 }

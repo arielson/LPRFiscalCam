@@ -223,6 +223,7 @@
 
                         <Switch
                             android:id="@+id/switchNoite"
+                            android:visibility="gone"
                             android:textSize="24sp"
                             android:textColor="@color/WHITE"
                             android:layout_width="wrap_content"

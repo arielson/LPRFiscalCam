@@ -9,14 +9,17 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 
 interface APIService {
-    @GET("v1/Cliente/GetByLoginAndSenha/{login}/{senha}")
-    fun getClienteByLoginAndSenha(
-        @Path("login") login: String?,
-        @Path("senha") senha: String?
-    ): Call<Cliente?>
+//    @GET("v1/Cliente/GetByLoginAndSenha/{login}/{senha}")
+//    fun getClienteByLoginAndSenha(
+//        @Path("login") login: String?,
+//        @Path("senha") senha: String?
+//    ): Call<Cliente?>
+//
+//    @GET("v1/Fiscalizacao/GetByCliente")
+//    fun getFiscalizacoes(): Call<List<Fiscalizacao>?>
 
-    @GET("v1/Fiscalizacao/GetByCliente")
-    fun getFiscalizacoes(): Call<List<Fiscalizacao>?>
+    @GET("v1/Fiscalizacao/GetByCodigo/{codigo}")
+    fun getFiscalizacao(@Path("codigo") codigo: String?): Call<Fiscalizacao?>
 
     @POST("v1/FiscalizacaoVeiculo/SetFromCameraANPR")
     fun setVeiculo(@Body veiculo: Veiculo?): Call<Veiculo?>
@@ -34,8 +37,14 @@ interface APIService {
 //        @Path("chave") chave: String?
 //    ): Call<Camera?>
 
-    @GET("v2/Camera/GetCameraByChave/{chave}/{uuid}")
-    fun getCameraByChave(
+//    @GET("v2/Camera/GetCameraByChave/{chave}/{uuid}")
+//    fun getCameraByChave(
+//        @Path("chave") chave: String?,
+//        @Path("uuid") uuid: String?
+//    ): Call<Camera?>
+
+    @GET("v2/Camera/GetCameraByChaveAnon/{chave}/{uuid}")
+    fun getCameraByChaveAnon(
         @Path("chave") chave: String?,
         @Path("uuid") uuid: String?
     ): Call<Camera?>
@@ -51,4 +60,6 @@ interface APIService {
 
     @PATCH("v1/Camera/AtualizaBateriaTemperaturaByChave")
     fun setCamera(@Body camera: Camera?): Call<Camera?>
+    @PATCH("v2/Camera/AtualizaBateriaTemperaturaByChave")
+    fun setCamera2(@Body camera: Camera?): Call<Camera?>
 }

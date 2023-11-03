@@ -10,4 +10,8 @@
     <string name="fechar">Fechar</string>
     <string name="brilho">BRILHO</string>
     <string name="noite">Noite</string>
+    <string name="acessar_com_o_codigo">Acessar com o código</string>
+    <string name="acessar_com_o_qrcode">Acessar com o qrcode</string>
+    <string name="chave">Chave</string>
+    <string name="codigo">Código</string>
 </resources>

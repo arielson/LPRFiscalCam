@@ -13,7 +13,6 @@ import android.widget.TextView
 import br.net.ari.lprfiscalcam.R
 import br.net.ari.lprfiscalcam.data.Resolution
 import br.net.ari.lprfiscalcam.interfaces.APIService
-import br.net.ari.lprfiscalcam.models.Cliente
 import com.google.gson.GsonBuilder
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -26,8 +25,6 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.nio.charset.Charset
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.*
@@ -35,13 +32,14 @@ import java.util.concurrent.TimeUnit
 
 
 object Utilities {
-    private const val Host = "lprfiscalapi.ari.net.br"
-//    private const val Host = "lprfiscalapihomol.ari.net.br"
+//    private const val Host = "lprfiscalapi.ari.net.br"
+    private const val Host = "e17e-191-252-210-100.ngrok-free.app"
 
     private const val ServiceUrl = "https://$Host/api/"
     private var service: APIService? = null
     private val interceptor = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
-    var cliente: Cliente? = null
+//    var cliente: Cliente? = null
+    var token: String? = null
     private fun okHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
             .readTimeout(60, TimeUnit.SECONDS)
@@ -52,7 +50,7 @@ object Utilities {
                 val requestBuilder: Request.Builder = original.newBuilder()
                     .header(
                         "Authorization",
-                        if (cliente != null) "bearer " + cliente!!.token else ""
+                        if (token != null) "bearer $token" else ""
                     )
                 val request: Request = requestBuilder.build()
                 chain.proceed(request)
@@ -111,21 +109,21 @@ object Utilities {
 //        return outputStream.toByteArray()
 //    }
 
-    fun sha256(base: String): String {
-        return try {
-            val digest = MessageDigest.getInstance("SHA-256")
-            val hash = digest.digest(base.toByteArray(StandardCharsets.UTF_8))
-            val hexString = StringBuilder()
-            for (b in hash) {
-                val hex = Integer.toHexString(0xff and b.toInt())
-                if (hex.length == 1) hexString.append('0')
-                hexString.append(hex)
-            }
-            hexString.toString()
-        } catch (ex: Exception) {
-            throw RuntimeException(ex)
-        }
-    }
+//    fun sha256(base: String): String {
+//        return try {
+//            val digest = MessageDigest.getInstance("SHA-256")
+//            val hash = digest.digest(base.toByteArray(StandardCharsets.UTF_8))
+//            val hexString = StringBuilder()
+//            for (b in hash) {
+//                val hex = Integer.toHexString(0xff and b.toInt())
+//                if (hex.length == 1) hexString.append('0')
+//                hexString.append(hex)
+//            }
+//            hexString.toString()
+//        } catch (ex: Exception) {
+//            throw RuntimeException(ex)
+//        }
+//    }
 
     fun analiseException(code: Int, raw: String?, error: String?, context: Context): String? {
         return try {
