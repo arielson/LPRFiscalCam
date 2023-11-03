@@ -32,8 +32,8 @@ import java.util.concurrent.TimeUnit
 
 
 object Utilities {
-//    private const val Host = "lprfiscalapi.ari.net.br"
-    private const val Host = "e17e-191-252-210-100.ngrok-free.app"
+    private const val Host = "lprfiscalapi.ari.net.br"
+//    private const val Host = "e17e-191-252-210-100.ngrok-free.app"
 
     private const val ServiceUrl = "https://$Host/api/"
     private var service: APIService? = null
