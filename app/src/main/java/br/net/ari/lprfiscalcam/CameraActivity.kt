@@ -1,27 +1,16 @@
 package br.net.ari.lprfiscalcam
 
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.Dialog
 import android.content.*
-import android.content.pm.PackageInfo
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.Rect
+import android.graphics.BitmapFactory
 import android.hardware.camera2.*
 import android.media.MediaPlayer
-import android.os.BatteryManager
-import android.os.Build
-import android.os.Bundle
-import android.os.Looper
+import android.os.*
 import android.text.Html
 import android.text.method.ScrollingMovementMethod
-import android.util.Base64
 import android.util.Log
 import android.util.Size
-import android.view.Surface
-import android.view.Window
-import android.view.WindowManager
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -31,50 +20,42 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
-import androidx.core.content.pm.PackageInfoCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import br.net.ari.lprfiscalcam.core.*
-import br.net.ari.lprfiscalcam.data.ImageInfoPOJO
-import br.net.ari.lprfiscalcam.data.ImagePOJO
-import br.net.ari.lprfiscalcam.enums.ImageFormat
-import br.net.ari.lprfiscalcam.models.Camera
-import br.net.ari.lprfiscalcam.models.CameraLog
 import br.net.ari.lprfiscalcam.models.Fiscalizacao
-import br.net.ari.lprfiscalcam.models.Veiculo
 import com.google.android.gms.location.*
-import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.vaxtor.alprlib.AlprOcr
-import com.vaxtor.alprlib.VaxtorAlprManager
-import com.vaxtor.alprlib.VaxtorLicensingManager
-import com.vaxtor.alprlib.arguments.OcrFindPlatesImageArgs
-import com.vaxtor.alprlib.arguments.OcrInitialiseArgs
-import com.vaxtor.alprlib.data.EventPlateInfo
-import com.vaxtor.alprlib.enums.OperMode
+import org.tensorflow.lite.task.gms.vision.detector.Detection
+import java.io.IOException
+import java.util.*
+import java.util.concurrent.Executors
+import android.util.Base64
+import android.view.*
+import br.net.ari.lprfiscalcam.data.Resolution
+import br.net.ari.lprfiscalcam.dto.PlateDTO
+import br.net.ari.lprfiscalcam.models.Veiculo
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.*
-import java.util.concurrent.Executors
+import java.time.LocalDateTime
+import kotlin.properties.Delegates
 
 
-class CameraActivity : AppCompatActivity() {
+class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListener {
     companion object {
         lateinit var fiscalizacao: Fiscalizacao
+        var binData: Int = 0
     }
-
-    private lateinit var manager: VaxtorAlprManager
-    private var initOcr: Long = -1
 
     private lateinit var imageAnalyzer: ImageAnalysis
     private lateinit var cameraProvider: ProcessCameraProvider
 
+    private var camera: Camera? = null
     private val cameraExecutor by lazy { Executors.newSingleThreadExecutor() }
     private var cameraControl: CameraControl? = null
     private var cameraInfo: CameraInfo? = null
@@ -99,7 +80,36 @@ class CameraActivity : AppCompatActivity() {
     private var latitude: Double? = null
     private var longitude: Double? = null
 
+    private lateinit var objectDetectorHelper: ObjectDetectorHelper
+    private lateinit var activity: AppCompatActivity
+    private lateinit var bitmapBuffer: Bitmap
+
+    private lateinit var viewFinder: PreviewView
+    private lateinit var seekBarZoom: SeekBar
+    private lateinit var textViewZoom: TextView
+    private lateinit var buttonZoomMenos: Button
+    private lateinit var buttonZoomMais: Button
+    private lateinit var seekBarFoco: SeekBar
+    private lateinit var textViewFoco: TextView
+    private lateinit var buttonFocoMenos: Button
+    private lateinit var buttonFocoMais: Button
+    private lateinit var textViewBrilho: TextView
+    private lateinit var buttonBrilhoMenos: Button
+    private lateinit var buttonBrilhoMais: Button
+    private lateinit var textViewPlateLog: TextView
+    private lateinit var mediaPlayer: MediaPlayer
+    private lateinit var textViewDataAtualizacao: TextView
+
+    @SuppressLint("UseSwitchCompatOrMaterialCode")
+    private lateinit var switchNoite: Switch
+
+    private lateinit var recognizer: TextRecognizer
+
+    private var placas = mutableListOf<PlateDTO>()
+
     private var logText = ""
+
+    private var ocrConfidence by Delegates.notNull<Float>()
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -116,6 +126,17 @@ class CameraActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         startLocationUpdates()
+
+        val rootView = findViewById<View>(android.R.id.content)
+        rootView.viewTreeObserver.addOnGlobalLayoutListener(object :
+            ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                rootView.viewTreeObserver.removeOnGlobalLayoutListener(this)
+
+                setFoco()
+                setZoom()
+            }
+        })
     }
 
     override fun onPause() {
@@ -136,12 +157,12 @@ class CameraActivity : AppCompatActivity() {
         )
     }
 
-    @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests", "DiscouragedApi")
+    @SuppressLint("DiscouragedApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
 
-        val activity = this
+        activity = this
 
         val vezesTotal = 5
         var vezesTocada = 0
@@ -150,7 +171,7 @@ class CameraActivity : AppCompatActivity() {
             packageName
         )
 
-        val mediaPlayer = MediaPlayer.create(activity, resID)
+        mediaPlayer = MediaPlayer.create(activity, resID)
         mediaPlayer.setOnCompletionListener {
             vezesTocada++
             if (vezesTocada < vezesTotal)
@@ -182,40 +203,124 @@ class CameraActivity : AppCompatActivity() {
 
         sharedPreference = getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
         editor = sharedPreference.edit()
+        ocrConfidence = sharedPreference.getFloat("ocrconfidence", 0.95f)
 
         val relativeLayoutMainContainer =
             findViewById<RelativeLayout>(R.id.relativeLayoutMainContainer)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, relativeLayoutMainContainer).let { controller ->
             controller.hide(WindowInsetsCompat.Type.systemBars())
             controller.systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
-        initOcr = -1
 
-        val viewFinder = findViewById<PreviewView>(R.id.viewFinder)
-        val textViewPlateLog = findViewById<TextView>(R.id.textViewPlateLog)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.setDecorFitsSystemWindows(false)
+            val windowInsetsController = window.insetsController
+            windowInsetsController?.let {
+                it.hide(WindowInsets.Type.navigationBars())
+                it.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        }
+
+        viewFinder = findViewById(R.id.viewFinder)
+        textViewPlateLog = findViewById(R.id.textViewPlateLog)
         textViewTemperature = findViewById(R.id.textViewTemperature)
         textViewPlateLog.movementMethod = ScrollingMovementMethod()
 
-        val seekBarZoom = findViewById<SeekBar>(R.id.seekBarZoom)
-        val seekBarFoco = findViewById<SeekBar>(R.id.seekBarFoco)
+        seekBarZoom = findViewById(R.id.seekBarZoom)
+        textViewZoom = findViewById(R.id.textViewZoom)
+        buttonZoomMais = findViewById(R.id.buttonZoomMais)
+        buttonZoomMenos = findViewById(R.id.buttonZoomMenos)
+        seekBarFoco = findViewById(R.id.seekBarFoco)
+        textViewFoco = findViewById(R.id.textViewFoco)
+        buttonFocoMais = findViewById(R.id.buttonFocoMais)
+        buttonFocoMenos = findViewById(R.id.buttonFocoMenos)
         seekBarBrilho = findViewById(R.id.seekBarBrilho)
+        buttonBrilhoMenos = findViewById(R.id.buttonBrilhoMenos)
+        buttonBrilhoMais = findViewById(R.id.buttonBrilhoMais)
+        textViewBrilho = findViewById(R.id.textViewBrilho)
+        textViewDataAtualizacao = findViewById(R.id.textViewDataAtualizacao)
+
+        val timer = Timer()
+        val task = object : TimerTask() {
+            override fun run() {
+                Utilities.service().getDataAtualizacao().enqueue(object : Callback<String?> {
+                    override fun onResponse(
+                        call: Call<String?>,
+                        response: Response<String?>
+                    ) {
+                        if (response.isSuccessful && response.body() != null) {
+                            textViewDataAtualizacao.text = response.body()
+                        }
+                    }
+
+                    override fun onFailure(
+                        call: Call<String?>,
+                        t: Throwable
+                    ) {
+                        t.printStackTrace()
+                    }
+                })
+            }
+        }
+        timer.schedule(task, 0, 1800000)
+
+        switchNoite = findViewById(R.id.switchNoite)
+        switchNoite.isChecked = binData == 1
+        switchNoite.setOnCheckedChangeListener { _, isChecked ->
+            var binData = 0
+            if (isChecked)
+                binData = 1
+            CameraActivity.binData = binData
+            val intent = Intent(activity, CameraActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
+
+        buttonZoomMenos.setOnClickListener {
+            if (seekBarZoom.progress > seekBarZoom.min)
+                changeZoom(seekBarZoom.progress - 1)
+        }
+
+        buttonZoomMais.setOnClickListener {
+            if (seekBarZoom.progress < seekBarZoom.max)
+                changeZoom(seekBarZoom.progress + 1)
+        }
+
+        buttonFocoMenos.setOnClickListener {
+            if (seekBarFoco.progress > seekBarFoco.min)
+                changeFoco(seekBarFoco.progress - 1)
+        }
+
+        buttonFocoMais.setOnClickListener {
+            if (seekBarFoco.progress < seekBarFoco.max)
+                changeFoco(seekBarFoco.progress + 1)
+        }
+
+        buttonBrilhoMenos.setOnClickListener {
+            Log.d("BRILHO MENOS", "${seekBarBrilho.progress} - ${seekBarBrilho.min}")
+            if (seekBarBrilho.progress > seekBarBrilho.min)
+                changeBrilho(seekBarBrilho.progress - 1)
+        }
+
+        buttonBrilhoMais.setOnClickListener {
+            Log.d("BRILHO MAIS", "${seekBarBrilho.progress} - ${seekBarBrilho.max}")
+            if (seekBarBrilho.progress < seekBarBrilho.max)
+                changeBrilho(seekBarBrilho.progress + 1)
+        }
 
         val buttonClose = findViewById<Button>(R.id.buttonClose)
         buttonClose.setOnClickListener {
             buttonClose.isEnabled = false
             cameraProvider.unbindAll()
-            Thread.sleep(100)
+            Thread.sleep(50)
             imageAnalyzer.clearAnalyzer()
-            Thread.sleep(100)
+            Thread.sleep(50)
             cameraExecutor.shutdown()
-            Thread.sleep(100)
-            manager.finalize()
-            Thread.sleep(100)
-            manager.shutdown()
-            Thread.sleep(100)
+            Thread.sleep(50)
             finish()
         }
 
@@ -223,26 +328,54 @@ class CameraActivity : AppCompatActivity() {
         buttonExit.setOnClickListener {
             buttonExit.isEnabled = false
             val builder = AlertDialog.Builder(this@CameraActivity)
-            builder.setMessage("Ao sair os dados de login, senha e operação serão limpos. Deseja continuar?")
+            builder.setMessage("Ao sair os dados de login, senha e operação serão limpos e a chave utilizada perderá o acesso por alguns dias. Deseja continuar?")
                 .setCancelable(false)
                 .setPositiveButton("Sim") { _, _ ->
-                    cameraProvider.unbindAll()
-                    Thread.sleep(100)
-                    imageAnalyzer.clearAnalyzer()
-                    Thread.sleep(100)
-                    cameraExecutor.shutdown()
-                    Thread.sleep(100)
-                    manager.finalize()
-                    Thread.sleep(100)
-                    manager.shutdown()
-                    Thread.sleep(100)
-                    editor.remove("fiscalizacao")
-                    editor.remove("login")
-                    editor.remove("senha")
-                    editor.apply()
-                    val intent = Intent(this, MainActivity::class.java)
-                    startActivity(intent)
-                    finish()
+                    val chave = sharedPreference.getString("chave", "")
+                    val uuid = sharedPreference.getString("uuid", "")
+                    Utilities.service().cleanCameraByChave(chave, uuid)
+                        .enqueue(object : Callback<br.net.ari.lprfiscalcam.models.Camera?> {
+                            override fun onResponse(
+                                call: Call<br.net.ari.lprfiscalcam.models.Camera?>,
+                                response: Response<br.net.ari.lprfiscalcam.models.Camera?>
+                            ) {
+                                if (response.isSuccessful && response.body() != null) {
+                                    cameraProvider.unbindAll()
+                                    Thread.sleep(50)
+                                    imageAnalyzer.clearAnalyzer()
+                                    Thread.sleep(50)
+                                    cameraExecutor.shutdown()
+                                    Thread.sleep(50)
+                                    Utilities.clearSharedPreferences(activity, "lprfiscalcam")
+                                    val intent = Intent(activity, MainActivity::class.java)
+                                    startActivity(intent)
+                                    finish()
+                                } else {
+                                    Utilities.showDialog(
+                                        activity,
+                                        Utilities.analiseException(
+                                            response.code(), response.raw().toString(),
+                                            if (response.errorBody() != null) response.errorBody()!!
+                                                .string() else null,
+                                            applicationContext
+                                        ),
+                                        null
+                                    )
+                                }
+                            }
+
+                            override fun onFailure(
+                                call: Call<br.net.ari.lprfiscalcam.models.Camera?>,
+                                t: Throwable
+                            ) {
+                                t.printStackTrace()
+                                Toast.makeText(
+                                    applicationContext,
+                                    R.string.service_failure,
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        })
                 }
                 .setNegativeButton("Não") { dialog, _ ->
                     buttonExit.isEnabled = true
@@ -255,149 +388,18 @@ class CameraActivity : AppCompatActivity() {
         intentfilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         registerReceiver(broadcastreceiver, intentfilter)
 
+        recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+
+        objectDetectorHelper = ObjectDetectorHelper(
+            context = this,
+            binData = binData,
+            objectDetectorListener = this
+        )
+    }
+
+    @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
+    fun setupCamera() {
         try {
-            val ocrFile = File(cacheDir, "ocr_data.bin")
-            if (!ocrFile.exists()) {
-                ocrFile.createNewFile()
-                val openRawResource = resources.openRawResource(com.vaxtor.alprlib.R.raw.ocr_data)
-                val fileOutputStream = FileOutputStream(ocrFile)
-                openRawResource.copyTo(fileOutputStream)
-            }
-
-            manager = VaxtorAlprManager(ocrFile.absolutePath)
-            val countries = longArrayOf(AlprOcr.ocrGetWorldCountryStateCode("Brazil"))
-            val ocrInitialiseArgs = OcrInitialiseArgs(
-                oper_mode = OperMode.ASYNC.code,
-                list_countries_codes = countries,
-                list_num_countries = countries.size,
-                ocr_complexity = Constants.OCRComplexity,
-                grammar_strict = Constants.GrammarStrict,
-                min_global_confidence = Constants.MinGlobalConfidence,
-                min_character_confidence = Constants.MinCharacterConfidence,
-                same_plate_delay = Constants.SamePlateDelay,
-                same_plate_max_chars_distance = Constants.SamePlateMaxCharsDistance,
-                max_slop_angle = Constants.MaxSlopAngle,
-                background_mode = Constants.BackgroundMode,
-                min_num_plate_characters = Constants.MinNumPlateCharacters,
-                max_num_plate_characters = Constants.MaxNumPlateCharacters,
-                min_char_height = Constants.MinCharHeight,
-                max_char_height = Constants.MaxCharHeight,
-                detect_multiline_plate = Constants.DetectMultilinePlate
-            )
-
-            initOcr = manager.initOcr(ocrInitialiseArgs, FirebaseCrashlytics.getInstance())
-            if (initOcr == -1L) {
-                Toast.makeText(
-                    applicationContext,
-                    "Atualizando chave...",
-                    Toast.LENGTH_LONG
-                ).show()
-                val chave = sharedPreference.getString("chave_lprfiscal", "")
-                if (chave != null && chave.isNotEmpty()) {
-                    Utilities.service().getCameraByChave(chave)
-                        .enqueue(object : Callback<Camera?> {
-                            override fun onResponse(
-                                call: Call<Camera?>,
-                                response: Response<Camera?>
-                            ) {
-                                if (response.isSuccessful && response.body() != null) {
-                                    val camera = response.body()!!
-                                    VaxtorLicensingManager.registerLicense(camera.chaveVaxtor!!) { bool, error ->
-                                        if (!bool) {
-                                            val packageInfo = getPackageInfo()
-                                            val verCode =
-                                                PackageInfoCompat.getLongVersionCode(packageInfo)
-                                                    .toInt()
-
-                                            val initOcr = manager.initOcr(
-                                                ocrInitialiseArgs,
-                                                FirebaseCrashlytics.getInstance()
-                                            )
-
-                                            if (initOcr < 1) {
-                                                val cameraLog = CameraLog()
-                                                cameraLog.cameraId = camera.id
-                                                cameraLog.dispositivo =
-                                                    Utilities.getDeviceName()
-                                                cameraLog.texto =
-                                                    "App VerCode: $verCode <br> Chave: $chave <br> Chave Vaxtor: ${camera.chaveVaxtor!!} <br> Erro initOcr: $initOcr <br> Erro: $error"
-                                                Utilities.service()
-                                                    .setLog(cameraLog)
-                                                    .enqueue(object :
-                                                        Callback<Void?> {
-                                                        override fun onResponse(
-                                                            call: Call<Void?>,
-                                                            response: Response<Void?>
-                                                        ) {
-                                                            if (response.isSuccessful) {
-                                                                Toast.makeText(
-                                                                    applicationContext,
-                                                                    "Ocorreu um erro! Log enviado com sucesso. Suporte irá verificar o problema.",
-                                                                    Toast.LENGTH_LONG
-                                                                ).show()
-                                                            } else {
-                                                                Toast.makeText(
-                                                                    applicationContext,
-                                                                    Utilities.analiseException(
-                                                                        response.code(),
-                                                                        response.raw()
-                                                                            .toString(),
-                                                                        if (response.errorBody() != null) response.errorBody()!!
-                                                                            .string() else null,
-                                                                        applicationContext
-                                                                    ),
-                                                                    Toast.LENGTH_LONG
-                                                                ).show()
-                                                            }
-                                                        }
-
-                                                        override fun onFailure(
-                                                            call: Call<Void?>,
-                                                            t: Throwable
-                                                        ) {
-                                                            t.printStackTrace()
-                                                            Toast.makeText(
-                                                                applicationContext,
-                                                                R.string.service_failure,
-                                                                Toast.LENGTH_LONG
-                                                            ).show()
-                                                        }
-                                                    })
-                                            } else {
-                                                sendData(camera)
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    Toast.makeText(
-                                        applicationContext, Utilities.analiseException(
-                                            response.code(), response.raw().toString(),
-                                            if (response.errorBody() != null) response.errorBody()!!
-                                                .string() else null,
-                                            applicationContext
-                                        ), Toast.LENGTH_LONG
-                                    ).show()
-                                }
-                            }
-
-                            override fun onFailure(call: Call<Camera?>, t: Throwable) {
-                                t.printStackTrace()
-                                Toast.makeText(
-                                    applicationContext,
-                                    R.string.service_failure,
-                                    Toast.LENGTH_LONG
-                                ).show()
-                            }
-                        })
-                } else {
-                    Toast.makeText(
-                        applicationContext,
-                        "Chave local não encontrada",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            }
-
             val cameraProviderFuture = ProcessCameraProvider.getInstance(this.applicationContext)
             cameraProviderFuture.addListener({
                 cameraProvider = cameraProviderFuture.get()
@@ -410,27 +412,17 @@ class CameraActivity : AppCompatActivity() {
                         cameraCharacteristics?.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
                 }
 
-//                var sizes: Array<Size>? = null
-//                cameraCharacteristics?.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-//                    ?.let { streamConfigurationMap ->
-//                        streamConfigurationMap.getOutputSizes(android.graphics.ImageFormat.YUV_420_888)?.let { yuvSizes ->
-//                            sizes = yuvSizes
-//                        }
-//                    }
-
-                val factor = Utilities.greatestCommonFactor(
-                    resources.displayMetrics.widthPixels,
-                    resources.displayMetrics.heightPixels
-                )
-                var widthRatio = resources.displayMetrics.widthPixels / factor
-                var heightRatio = resources.displayMetrics.heightPixels / factor
-
-                while (widthRatio < 1280) {
-                    widthRatio = (widthRatio * 1.5).toInt()
-                    heightRatio = (heightRatio * 1.5).toInt()
+                val streamConfigurationMap =
+                    cameraCharacteristics?.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+                val resolutions =
+                    streamConfigurationMap?.getOutputSizes(android.graphics.ImageFormat.JPEG)
+                val resolutionsCamera = mutableListOf<Resolution>()
+                resolutions?.forEach { size ->
+                    Log.d("Resolution", "${size.width} x ${size.height}")
+                    resolutionsCamera.add(Resolution(size.width, size.height))
                 }
-
-                val sizeRotated = Size(widthRatio, heightRatio)
+                val resolutionCorrect = Utilities.resolutionCorrection(resolutionsCamera)
+                val sizeRotated = Size(resolutionCorrect.width, resolutionCorrect.height)
 
                 val preview = Preview.Builder()
                     .setTargetResolution(sizeRotated)
@@ -441,20 +433,28 @@ class CameraActivity : AppCompatActivity() {
                 imageAnalyzer = ImageAnalysis.Builder()
                     .setTargetResolution(sizeRotated)
                     .setTargetRotation(Surface.ROTATION_90)
+                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                     .build()
                     .also {
-                        it.setAnalyzer(
-                            cameraExecutor,
-                            YuvImageAnalyzer(::onYuvImage)
-                        )
+                        it.setAnalyzer(cameraExecutor) { image ->
+                            if (!::bitmapBuffer.isInitialized) {
+                                bitmapBuffer = Bitmap.createBitmap(
+                                    image.width,
+                                    image.height,
+                                    Bitmap.Config.ARGB_8888
+                                )
+                            }
+
+                            detectObjects(image)
+                        }
                     }
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-                val camera =
+                camera =
                     cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageAnalyzer)
-                cameraControl = camera.cameraControl
-                cameraInfo = camera.cameraInfo
-                camera.cameraControl.cancelFocusAndMetering()
+                cameraControl = camera?.cameraControl
+                cameraInfo = camera?.cameraInfo
+                camera?.cameraControl?.cancelFocusAndMetering()
 
                 loadFocus()
                 loadBrilho()
@@ -481,6 +481,8 @@ class CameraActivity : AppCompatActivity() {
                         cameraControl?.setLinearZoom(zoom)
                         editor.putInt("zoom", progress)
                         editor.apply()
+                        val text = "ZOOM [$zoom]"
+                        textViewZoom.text = text
                     }
 
                     override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -511,6 +513,8 @@ class CameraActivity : AppCompatActivity() {
                             camera2CameraControl.captureRequestOptions = captureRequestOptions
                             editor.putInt("foco", progress)
                             editor.apply()
+                            val text = "FOCO [$progress]"
+                            textViewFoco.text = text
                         }
                     }
 
@@ -522,70 +526,113 @@ class CameraActivity : AppCompatActivity() {
                 Toast.makeText(
                     applicationContext,
                     "Ajuste o zoom, foco e brilho deslizando nas barras ao lado",
-                    Toast.LENGTH_LONG
+                    Toast.LENGTH_SHORT
                 ).show()
 
-                if (sharedPreference.contains("zoom")) {
-                    val progress = sharedPreference.getInt("zoom", 0)
-                    seekBarZoom.progress = progress
-                    val zoom = progress / 100.toFloat()
-                    cameraControl?.setLinearZoom(zoom)
-                }
-
-                if (sharedPreference.contains("foco")) {
-                    val progress = sharedPreference.getInt("foco", 0)
-                    seekBarFoco.progress = progress
-                    if (minimumLens != null) {
-                        minimumLensNum = progress.toFloat() * minimumLens!! / 100
-                        val captureRequestOptions = CaptureRequestOptions.Builder()
-                            .setCaptureRequestOption(
-                                CaptureRequest.CONTROL_AF_MODE,
-                                CameraMetadata.CONTROL_AF_MODE_OFF
-                            )
-                            .setCaptureRequestOption(
-                                CaptureRequest.LENS_FOCUS_DISTANCE,
-                                minimumLensNum!!
-                            )
-                            .build()
-                        camera2CameraControl.captureRequestOptions = captureRequestOptions
-                    }
-                }
+                setZoom()
+                setFoco()
             }, ContextCompat.getMainExecutor(this.applicationContext))
-
-            manager.eventPlateInfoCallback = { it ->
-                val plate = it._plate_info?._plate_number_asciivar
-                sendPlate(it, plate, textViewPlateLog, mediaPlayer, activity)
-
-                if (plate?.get(4) == 'I') {
-                    val chars = plate.toCharArray()
-                    chars[4] = '1'
-                    val newPlate = String(chars)
-
-                    sendPlate(it, newPlate, textViewPlateLog, mediaPlayer, activity)
-                }
-            }
         } catch (e: IOException) {
             throw RuntimeException(e)
         }
     }
 
+    private fun setZoom() {
+        if (sharedPreference.contains("zoom")) {
+            val progress = sharedPreference.getInt("zoom", 0)
+            seekBarZoom.progress = progress
+            val zoom = progress / 100.toFloat()
+            cameraControl?.setLinearZoom(zoom)
+            val text = "ZOOM [$zoom]"
+            textViewZoom.text = text
+        }
+    }
+
+    private fun changeZoom(progress: Int) {
+        seekBarZoom.progress = progress
+        val zoom = progress / 100.toFloat()
+        cameraControl?.setLinearZoom(zoom)
+        val text = "ZOOM [$zoom]"
+        textViewZoom.text = text
+    }
+
+    @SuppressLint("UnsafeOptInUsageError")
+    private fun setFoco() {
+        if (sharedPreference.contains("foco")) {
+            val progress = sharedPreference.getInt("foco", 0)
+            seekBarFoco.progress = progress
+            val text = "FOCO [$progress]"
+            textViewFoco.text = text
+            if (minimumLens != null) {
+                minimumLensNum = progress.toFloat() * minimumLens!! / 100
+                val captureRequestOptions = CaptureRequestOptions.Builder()
+                    .setCaptureRequestOption(
+                        CaptureRequest.CONTROL_AF_MODE,
+                        CameraMetadata.CONTROL_AF_MODE_OFF
+                    )
+                    .setCaptureRequestOption(
+                        CaptureRequest.LENS_FOCUS_DISTANCE,
+                        minimumLensNum!!
+                    )
+                    .build()
+                val camera2CameraControl: Camera2CameraControl =
+                    Camera2CameraControl.from(cameraControl!!)
+                camera2CameraControl.captureRequestOptions = captureRequestOptions
+            }
+        }
+    }
+
+    @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
+    private fun changeFoco(progress: Int) {
+        if (minimumLens != null) {
+            minimumLensNum = progress.toFloat() * minimumLens!! / 100
+            val captureRequestOptions = CaptureRequestOptions.Builder()
+                .setCaptureRequestOption(
+                    CaptureRequest.CONTROL_AF_MODE,
+                    CameraMetadata.CONTROL_AF_MODE_OFF
+                )
+                .setCaptureRequestOption(
+                    CaptureRequest.LENS_FOCUS_DISTANCE,
+                    minimumLensNum!!
+                )
+                .build()
+            val camera2CameraControl: Camera2CameraControl =
+                Camera2CameraControl.from(cameraControl!!)
+            camera2CameraControl.captureRequestOptions = captureRequestOptions
+            seekBarFoco.progress = progress
+            editor.putInt("foco", progress)
+            editor.apply()
+            val text = "FOCO [$progress]"
+            textViewFoco.text = text
+        }
+    }
+
+    private fun detectObjects(image: ImageProxy) {
+        image.use { bitmapBuffer.copyPixelsFromBuffer(image.planes[0].buffer) }
+
+        val imageRotation = image.imageInfo.rotationDegrees
+        objectDetectorHelper.detect(bitmapBuffer, imageRotation)
+    }
+
     private fun sendPlate(
-        it: EventPlateInfo,
-        plate: String?,
-        textViewPlateLog: TextView,
-        mediaPlayer: MediaPlayer,
-        activity: Activity
+        placa: String,
+        confiabilidade: Float,
+        bitmapPlaca: Bitmap,
+        base64Veiculo: String,
+        aferidor: Int
     ) {
-        Log.d("Placa:", "$plate")
+        Log.d("Placa:", placa)
 
         val cameraId = sharedPreference.getLong("camera", 0)
         val veiculoInput = Veiculo()
-        veiculoInput.placa = plate
+        veiculoInput.placa = placa
         veiculoInput.fiscalizacaoId = fiscalizacao.id
         veiculoInput.dispositivo = Utilities.getDeviceName()
         veiculoInput.cameraId = cameraId
+        veiculoInput.confianca = confiabilidade.toDouble()
         veiculoInput.latitude = latitude
         veiculoInput.longitude = longitude
+        veiculoInput.aferidor = aferidor
         Utilities.service()
             .setVeiculo(veiculoInput)
             .enqueue(object : Callback<Veiculo?> {
@@ -596,73 +643,30 @@ class CameraActivity : AppCompatActivity() {
                     if (response.isSuccessful && response.body() != null) {
                         val veiculo: Veiculo? = response.body()
                         veiculo?.cameraId = cameraId
-                        veiculo?.placa = plate
-                        val confPerc = it._plate_info?._plate_read_confidence?.div(100.0)
-                        veiculo?.confianca = confPerc
+                        veiculo?.placa = placa
+                        veiculo?.confianca = confiabilidade.toDouble()
                         veiculo?.dispositivo = Utilities.getDeviceName()
                         if (veiculo?.id!! > 0) {
                             logText =
-                                "<font color=${Utilities.colorByStatus(veiculo.pendencia)}>* $plate - ${veiculo.pendencia}</font><br><br>${logText}\n"
+                                "<font color=${Utilities.colorByStatus(veiculo.pendencia)}>* $placa - ${veiculo.pendencia}</font><br><br>${logText}\n"
                             textViewPlateLog.text =
                                 Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
 
                             if (veiculo.pendencia?.contains("Roubo_e_Furto") == true) {
                                 mediaPlayer.start()
-                                showDialog(
+                                Utilities.showDialog(
                                     activity,
                                     "${veiculo.marcaModelo}<br><font color=${
                                         Utilities.colorByStatus(veiculo.pendencia)
-                                    }>$plate</font>"
+                                    }>$placa</font>",
+                                    null
                                 )
                             }
 
                             Thread {
-                                if (it._source_image != null) {
-                                    val imagePOJO = Utilities.mapImagePOJO(
-                                        ImageInfoPOJO(
-                                            _format = it._source_image!!._format,
-                                            _height = it._source_image!!._height,
-                                            _width = it._source_image!!._width,
-                                            _image = it._source_image!!._image,
-                                            _size = it._source_image!!._size
-                                        )
-                                    )
-
-                                    var veiculoBitmap =
-                                        Utilities.bitmapFromImagePojo(imagePOJO!!)!!
-
-                                    val veiculoImage =
-                                        Utilities.getScaledImage(veiculoBitmap, 640, 480)
-                                    val veiculoImageBase64 =
-                                        Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
-                                    veiculo.foto2 = veiculoImageBase64
-
-                                    val plateBox = it._plate_info?._plate_bounding_box!!
-                                    val plateRect =
-                                        Rect(
-                                            plateBox[0],
-                                            plateBox[1],
-                                            plateBox[2],
-                                            plateBox[3]
-                                        )
-                                    veiculoBitmap =
-                                        Utilities.bitmapFromImagePojo(imagePOJO)!!
-                                    val plateBitamap = Utilities.cropBitmap(
-                                        veiculoBitmap,
-                                        plateRect
-                                    )
-                                    val byteArrayOutputStream = ByteArrayOutputStream()
-                                    plateBitamap.compress(
-                                        Bitmap.CompressFormat.JPEG,
-                                        100,
-                                        byteArrayOutputStream
-                                    )
-                                    val byteArray: ByteArray =
-                                        byteArrayOutputStream.toByteArray()
-                                    val plateImageBase64 =
-                                        Base64.encodeToString(byteArray, Base64.NO_WRAP)
-                                    veiculo.foto1 = plateImageBase64
-                                }
+                                val plateImageBase64 = Utilities.bitmapToBase64(bitmapPlaca)
+                                veiculo.foto1 = plateImageBase64
+                                veiculo.foto2 = base64Veiculo
 
                                 Utilities.service().postVeiculo(veiculo)
                                     .enqueue(object : Callback<String?> {
@@ -704,7 +708,7 @@ class CameraActivity : AppCompatActivity() {
                             }.start()
                         } else {
                             logText =
-                                "<font color=#5EBA7D>* $plate - OK</font><br><br>${logText}\n"
+                                "<font color=#5EBA7D>* $placa - OK</font><br><br>${logText}\n"
                             textViewPlateLog.text =
                                 Html.fromHtml(logText, Html.FROM_HTML_MODE_LEGACY)
                         }
@@ -759,6 +763,8 @@ class CameraActivity : AppCompatActivity() {
                     fromUser: Boolean
                 ) {
                     cameraControl?.setExposureCompensationIndex(progress)
+                    val text = "BRILHO [$progress]"
+                    textViewBrilho.text = text
                 }
 
                 override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -768,8 +774,21 @@ class CameraActivity : AppCompatActivity() {
         }
     }
 
+    private fun changeBrilho(progress: Int) {
+        cameraControl?.setExposureCompensationIndex(progress)
+        seekBarBrilho.progress = progress
+        val text = "BRILHO [$progress]"
+        textViewBrilho.text = text
+    }
+
     @SuppressLint("RestrictedApi", "UnsafeOptInUsageError", "VisibleForTests")
     fun loadFocus() {
+        if (cameraManager != null) {
+            cameraCharacteristics =
+                cameraManager?.getCameraCharacteristics(cameraManager!!.cameraIdList[0])
+            camCharacteristics =
+                cameraCharacteristics?.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+        }
         if (cameraControl != null) {
             if (cameraManager != null && cameraManager!!.cameraIdList.isNotEmpty()) {
                 val isManualFocus =
@@ -791,40 +810,6 @@ class CameraActivity : AppCompatActivity() {
         }
     }
 
-    private fun onYuvImage(image: ImagePOJO) {
-        try {
-            val ocrId = manager.ocrId ?: -111
-            if (ocrId > 0)
-                recognizeYuvImage(image)
-        } catch (e: Exception) {
-            Toast.makeText(applicationContext, "Erro: $e", Toast.LENGTH_SHORT)
-                .show()
-            Log.e("Erro", "onYuvImage $e")
-        }
-    }
-
-    private fun recognizeYuvImage(imagePOJO: ImagePOJO) {
-        val ocrId = manager.ocrId ?: -111
-        if (ocrId < 0) throw Exception("Can't recognize Image. Ocr init code  = $ocrId")
-
-        manager.ocrApplyImageRotation(imagePOJO.rotationDegrees)
-
-        if (imagePOJO.imageFormat == ImageFormat.YUV) {
-            val sdf = SimpleDateFormat("dd/M/yyyy hh:mm:ss", Locale.getDefault())
-            val currentDate = sdf.format(Date())
-            Log.d("recognizeYuvImage", "$currentDate - PASSOU")
-            manager.ocrFindPlatesYUV(
-                OcrFindPlatesImageArgs(
-                    id = ocrId,
-                    src_image = imagePOJO.src,
-                    image_width = imagePOJO.width.toLong(),
-                    image_height = imagePOJO.height.toLong()
-                )
-            )
-        } else if (imagePOJO.imageFormat == ImageFormat.JPEG)
-            manager.ocrFindPlatesJPEG(imagePOJO.src)
-    }
-
     private val broadcastreceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent) {
             val batteryTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0).toFloat() / 10
@@ -838,70 +823,220 @@ class CameraActivity : AppCompatActivity() {
             val finalString = "Temp: $batteryTempString | Bat: $bt%"
 
             textViewTemperature.text = finalString
+
+            val camera = br.net.ari.lprfiscalcam.models.Camera()
+            val cameraId = sharedPreference.getLong("camera", 0)
+            camera.id = cameraId
+            camera.bateria = bt.toFloat()
+            camera.temperatura = batteryTemp
+
+            if (cameraId > 0)
+                Utilities.service().setCamera2(camera)
+                    .enqueue(object : Callback<br.net.ari.lprfiscalcam.models.Camera?> {
+                        override fun onResponse(
+                            call: Call<br.net.ari.lprfiscalcam.models.Camera?>,
+                            response: Response<br.net.ari.lprfiscalcam.models.Camera?>
+                        ) {
+                            if (!response.isSuccessful) {
+                                val error = Utilities.analiseException(
+                                    response.code(), response.raw().toString(),
+                                    if (response.errorBody() != null) response.errorBody()!!
+                                        .string() else null,
+                                    applicationContext
+                                )
+                                Log.e("ERRO POST", "$error")
+                            }
+                        }
+
+                        override fun onFailure(
+                            call: Call<br.net.ari.lprfiscalcam.models.Camera?>,
+                            t: Throwable
+                        ) {
+                            t.printStackTrace()
+                        }
+                    })
         }
     }
 
-    @Suppress("DEPRECATION")
-    fun getPackageInfo(): PackageInfo {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
-        } else {
-            packageManager.getPackageInfo(packageName, 0)
+    override fun onInitialized() {
+        objectDetectorHelper.setupObjectDetector()
+        setupCamera()
+    }
+
+    override fun onError(error: String) {
+        activity.runOnUiThread {
+            Toast.makeText(activity, error, Toast.LENGTH_SHORT).show()
         }
     }
 
-    fun sendData(
-        camera: Camera
+    private var lastPost = LocalDateTime.now()
+
+    override fun onResults(
+        results: MutableList<Detection>?,
+        inferenceTime: Long,
+        imageHeight: Int,
+        imageWidth: Int,
+        bitmap: Bitmap
     ) {
-        val c2V = VaxtorLicensingManager.getC2V()
-        val cameraInput = Camera()
-        cameraInput.id = camera.id
-        cameraInput.c2V = c2V
-        cameraInput.uuid = Utilities.getDeviceName()
-        Utilities.service().patchC2VByChave(cameraInput)
-            .enqueue(object : Callback<Camera?> {
-                override fun onResponse(
-                    call: Call<Camera?>,
-                    response: Response<Camera?>
-                ) {
-                    if (!response.isSuccessful) {
-                        Toast.makeText(
-                            applicationContext, Utilities.analiseException(
-                                response.code(), response.raw().toString(),
-                                if (response.errorBody() != null) response.errorBody()!!
-                                    .string() else null,
-                                applicationContext
-                            ), Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
+        if (results != null) {
+            for (result in results) {
+                val bndbox = result.boundingBox
+                val confidence = result.categories.first().score
+                Log.d("Confiabilidade", "${confidence * 100} %")
+                Log.d("Tempo de inferência", "$inferenceTime ms")
+                var left = 0f
+                if (bndbox.left > 0)
+                    left = bndbox.left
+                var top = 0f
+                if (bndbox.top > 0)
+                    top = bndbox.top
+                try {
+                    bndbox.left = left
+                    bndbox.top = top
+                    val placa = Utilities.cropBitmap(bitmap, bndbox)
 
-                override fun onFailure(
-                    call: Call<Camera?>,
-                    t: Throwable
-                ) {
-                    t.printStackTrace()
-                    Toast.makeText(applicationContext, R.string.service_failure, Toast.LENGTH_LONG)
-                        .show()
+                    val placaInputImage: InputImage = if (placa.width > 640 && placa.height > 480) {
+                        val plateImage =
+                            Utilities.getScaledImage(placa, 640, 480)
+                        val plateResizedBitmap =
+                            BitmapFactory.decodeByteArray(plateImage, 0, plateImage.size)
+                        InputImage.fromBitmap(plateResizedBitmap, 0)
+                    } else
+                        InputImage.fromBitmap(placa, 0)
+
+                    recognizer.process(placaInputImage)
+                        .addOnSuccessListener { visionText ->
+                            val veiculoBitmap: Bitmap = bitmap.copy(bitmap.config, true)
+                            var placaTexto = ""
+                            for (textBlock in visionText.textBlocks) {
+                                for (line in textBlock.lines) {
+                                    Log.d("LINHA", "${line.text} - ${line.confidence}")
+
+                                    if (line.confidence >= ocrConfidence)
+                                        placaTexto += line.text
+                                    else
+                                        Log.d(
+                                            "ERRO CONFIANÇA",
+                                            "${line.text} - ${line.confidence} | $ocrConfidence"
+                                        )
+                                }
+                            }
+                            val placaNormalizada = Utilities.normalizePlate(placaTexto)
+                            Log.d("PLACA NORMALIZADA", placaNormalizada)
+
+                            val isBrasil = Utilities.validateBrazilianLicensePlate(placaNormalizada)
+                            if (isBrasil) {
+                                Log.d("PLACA FINAL", placaNormalizada)
+                                limparPlacas()
+                                if (!placas.any { it.placa == placaNormalizada }) {
+                                    val placaDTO = PlateDTO()
+                                    placaDTO.placa = placaNormalizada
+                                    placaDTO.data = LocalDateTime.now()
+
+                                    placas.add(placaDTO)
+                                    val veiculoImage =
+                                        Utilities.getScaledImage(veiculoBitmap, 640, 480)
+                                    val veiculoImageBase64 =
+                                        Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
+                                    sendPlate(
+                                        placaNormalizada,
+                                        confidence,
+                                        placaInputImage.bitmapInternal!!,
+                                        veiculoImageBase64,
+                                        1
+                                    )
+                                }
+                            } else if (Utilities.getSecondsBetweenDates(
+                                    lastPost,
+                                    LocalDateTime.now()
+                                ) >= 0.5
+                            ) {
+                                lastPost = LocalDateTime.now()
+                                var postTime = SystemClock.uptimeMillis()
+                                val cameraId = sharedPreference.getLong("camera", 0)
+                                val veiculoInput = Veiculo()
+                                veiculoInput.fiscalizacaoId = fiscalizacao.id
+                                veiculoInput.cameraId = cameraId
+                                veiculoInput.foto1 =
+                                    Utilities.bitmapToBase64(placaInputImage.bitmapInternal!!)
+                                Utilities.service().getPlaca(veiculoInput)
+                                    .enqueue(object : Callback<Veiculo?> {
+                                        override fun onResponse(
+                                            call: Call<Veiculo?>,
+                                            response: Response<Veiculo?>
+                                        ) {
+                                            if (response.isSuccessful && response.body() != null) {
+                                                val veiculo = response.body()!!
+                                                if (veiculo.placa != null) {
+                                                    Log.d("Foto Placa", "${veiculo.placa}")
+                                                    limparPlacas()
+                                                    if (!placas.any { it.placa == veiculo.placa }) {
+                                                        val placaDTO = PlateDTO()
+                                                        placaDTO.placa = veiculo.placa
+                                                        placaDTO.data = LocalDateTime.now()
+                                                        val veiculoImage = Utilities.getScaledImage(
+                                                            veiculoBitmap,
+                                                            640,
+                                                            480
+                                                        )
+                                                        val veiculoImageBase64 =
+                                                            Base64.encodeToString(
+                                                                veiculoImage,
+                                                                Base64.NO_WRAP
+                                                            )
+                                                        placas.add(placaDTO)
+                                                        sendPlate(
+                                                            veiculo.placa!!,
+                                                            confidence,
+                                                            placaInputImage.bitmapInternal!!,
+                                                            veiculoImageBase64,
+                                                            2
+                                                        )
+                                                        postTime =
+                                                            SystemClock.uptimeMillis() - postTime
+                                                    } else {
+                                                        postTime =
+                                                            SystemClock.uptimeMillis() - postTime
+                                                    }
+                                                } else {
+                                                    postTime = SystemClock.uptimeMillis() - postTime
+                                                }
+                                            } else {
+                                                postTime = SystemClock.uptimeMillis() - postTime
+                                                val error = Utilities.analiseException(
+                                                    response.code(), response.raw().toString(),
+                                                    if (response.errorBody() != null) response.errorBody()!!
+                                                        .string() else null,
+                                                    applicationContext
+                                                )
+                                                Log.e("ERRO POST", "$error")
+                                            }
+                                            Log.d("Tempo de post", "$postTime ms")
+                                        }
+
+                                        override fun onFailure(call: Call<Veiculo?>, t: Throwable) {
+                                            t.printStackTrace()
+                                        }
+                                    })
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("ERRO", e.message!!)
+                        }
+                } catch (exc: Exception) {
+                    Log.e("Erro", "Error $exc")
                 }
-            })
+            }
+        }
     }
 
-    private fun showDialog(activity: Activity, info: String?) {
-        val dialog = Dialog(activity)
-        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        dialog.setCancelable(false)
-        dialog.setContentView(R.layout.dialog_custom_layout)
-        dialog.window?.setLayout(
-            (activity.resources.displayMetrics.widthPixels * 0.8).toInt(),
-            (activity.resources.displayMetrics.heightPixels * 0.8).toInt()
-        )
-        val textViewInfo = dialog.findViewById(R.id.textViewInfo) as TextView
-        textViewInfo.text = Html.fromHtml(info, Html.FROM_HTML_MODE_LEGACY)
-        val buttonFechar = dialog.findViewById(R.id.buttonFechar) as Button
-        buttonFechar.setOnClickListener {
-            dialog.dismiss()
+    fun limparPlacas() {
+        val samePlateDelay = sharedPreference.getInt("sameplatedelay", 500)
+        placas.removeAll {
+            Utilities.getSecondsBetweenDates(
+                it.data!!,
+                LocalDateTime.now()
+            ) > samePlateDelay
         }
-        dialog.show()
     }
 }

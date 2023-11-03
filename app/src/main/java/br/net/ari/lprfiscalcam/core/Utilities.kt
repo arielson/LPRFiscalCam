@@ -1,13 +1,18 @@
 package br.net.ari.lprfiscalcam.core
 
+import android.app.Activity
+import android.app.Dialog
 import android.content.Context
 import android.graphics.*
 import android.os.Build
+import android.text.Html
+import android.util.Base64
+import android.view.Window
+import android.widget.Button
+import android.widget.TextView
 import br.net.ari.lprfiscalcam.R
-import br.net.ari.lprfiscalcam.data.ImageInfoPOJO
-import br.net.ari.lprfiscalcam.data.ImagePOJO
+import br.net.ari.lprfiscalcam.data.Resolution
 import br.net.ari.lprfiscalcam.interfaces.APIService
-import br.net.ari.lprfiscalcam.models.Cliente
 import com.google.gson.GsonBuilder
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -17,19 +22,25 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
 import java.io.ByteArrayOutputStream
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
+import java.io.File
+import java.io.IOException
+import java.nio.charset.Charset
+import java.time.Duration
+import java.time.LocalDateTime
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 
 object Utilities {
     private const val Host = "lprfiscalapi.ari.net.br"
-//    private const val Host = "lprfiscalapihomol.ari.net.br"
+//    private const val Host = "e17e-191-252-210-100.ngrok-free.app"
 
-    private const val ServiceUrl = "https://$Host/api/v1/"
+    private const val ServiceUrl = "https://$Host/api/"
     private var service: APIService? = null
     private val interceptor = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
-    var cliente: Cliente? = null
+
+    var token: String? = null
+
     private fun okHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
             .readTimeout(60, TimeUnit.SECONDS)
@@ -40,7 +51,7 @@ object Utilities {
                 val requestBuilder: Request.Builder = original.newBuilder()
                     .header(
                         "Authorization",
-                        if (cliente != null) "bearer " + cliente!!.token else ""
+                        if (token != null) "bearer $token" else ""
                     )
                 val request: Request = requestBuilder.build()
                 chain.proceed(request)
@@ -67,51 +78,16 @@ object Utilities {
         return service as APIService
     }
 
-    fun mapImagePOJO(sourceImage: ImageInfoPOJO?): ImagePOJO? {
-        val width = sourceImage?._width?.toInt()
-        val height = sourceImage?._height?.toInt()
-        val image = sourceImage?._image
-        val format = br.net.ari.lprfiscalcam.enums.ImageFormat.getFormat(sourceImage?._format?.toInt() ?: -1)
-        return if (width != null && height != null && image != null && format != null)
-            ImagePOJO(
-                width = width,
-                height = height,
-                src = image,
-                rotationDegrees = 0,
-                imageFormat = format
-            )
-        else null
-    }
+    fun cropBitmap(bitmap: Bitmap, rect: RectF): Bitmap =
+        Bitmap.createBitmap(
+            bitmap,
+            rect.left.toInt(),
+            rect.top.toInt(),
+            rect.width().toInt(),
+            rect.height().toInt()
+        )
 
-    fun bitmapFromImagePojo(imagePOJO: ImagePOJO): Bitmap? = when (imagePOJO.imageFormat) {
-        br.net.ari.lprfiscalcam.enums.ImageFormat.RGB -> {
-            val src = imagePOJO.src
-            val pix = IntArray(src.size / 3) { i ->
-                val a = 0xff
-                val r = (0xFF and src[3 * i].toInt())
-                val g = (0xFF and src[3 * i + 1].toInt())
-                val b = (0xFF and src[3 * i + 2].toInt())
-                Color.argb(a, r, g, b)
-            }
-            Bitmap.createBitmap(pix, imagePOJO.width, imagePOJO.height, Bitmap.Config.ARGB_8888)
-        }
-        br.net.ari.lprfiscalcam.enums.ImageFormat.JPEG -> {
-            imagePOJO.src.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-        }
-        br.net.ari.lprfiscalcam.enums.ImageFormat.YUV -> {
-            val yuvImage =
-                YuvImage(imagePOJO.src, ImageFormat.NV21, imagePOJO.width, imagePOJO.height, null)
-            val out = ByteArrayOutputStream()
-            yuvImage.compressToJpeg(Rect(0, 0, yuvImage.width, yuvImage.height), 100, out)
-            out.toByteArray().let { BitmapFactory.decodeByteArray(it, 0, it.size) }
-        }
-        else -> throw Exception("can't create from ${imagePOJO.imageFormat}")
-    }
-
-    fun cropBitmap(bitmap: Bitmap, rect: Rect): Bitmap =
-        Bitmap.createBitmap(bitmap, rect.left, rect.top, rect.width(), rect.height())
-
-    fun getScaledImage(bitmapImage: Bitmap, newWidth: Int, newHeight: Int): ByteArray? {
+    fun getScaledImage(bitmapImage: Bitmap, newWidth: Int, newHeight: Int): ByteArray {
         val mutableBitmapImage = Bitmap.createScaledBitmap(bitmapImage, newWidth, newHeight, false)
         val outputStream = ByteArrayOutputStream()
         mutableBitmapImage.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
@@ -120,34 +96,6 @@ object Utilities {
         }
         bitmapImage.recycle()
         return outputStream.toByteArray()
-    }
-
-//    fun getScaledImage(originalImage: ByteArray, newWidth: Int, newHeight: Int): ByteArray? {
-//        val bitmapImage = BitmapFactory.decodeByteArray(originalImage, 0, originalImage.size)
-//        val mutableBitmapImage = Bitmap.createScaledBitmap(bitmapImage, newWidth, newHeight, false)
-//        val outputStream = ByteArrayOutputStream()
-//        mutableBitmapImage.compress(Bitmap.CompressFormat.PNG, 0, outputStream)
-//        if (mutableBitmapImage != bitmapImage) {
-//            mutableBitmapImage.recycle()
-//        }
-//        bitmapImage.recycle()
-//        return outputStream.toByteArray()
-//    }
-
-    fun sha256(base: String): String {
-        return try {
-            val digest = MessageDigest.getInstance("SHA-256")
-            val hash = digest.digest(base.toByteArray(StandardCharsets.UTF_8))
-            val hexString = StringBuilder()
-            for (b in hash) {
-                val hex = Integer.toHexString(0xff and b.toInt())
-                if (hex.length == 1) hexString.append('0')
-                hexString.append(hex)
-            }
-            hexString.toString()
-        } catch (ex: Exception) {
-            throw RuntimeException(ex)
-        }
     }
 
     fun analiseException(code: Int, raw: String?, error: String?, context: Context): String? {
@@ -206,7 +154,184 @@ object Utilities {
         return "#000000"
     }
 
-    fun greatestCommonFactor(width: Int, height: Int): Int {
-        return if (height == 0) width else greatestCommonFactor(height, width % height)
+    const val brasilRegex = "[A-Z]{3}\\d[A-Z0-9]{1}\\d{2}"
+
+    fun validateBrazilianLicensePlate(licensePlate: String): Boolean {
+        val regex = Regex(brasilRegex)
+
+        return regex.matches(licensePlate)
     }
+
+    private fun getMatchedString(input: String, pattern: Regex): String? {
+        val matchResult = pattern.find(input)
+
+        return matchResult?.value
+    }
+
+    private fun removeSpecialCharacters(input: String): String {
+        val pattern = """[^a-zA-Z0-9]""".toRegex()
+
+        return pattern.replace(input, "")
+    }
+
+    fun normalizePlate(input: String): String {
+        var result = removeSpecialCharacters(input)
+        result = result.replace("BRASIL", "")
+        result = result.replace("RASIL", "")
+        result = result.replace("ASIL", "")
+        result = result.replace("|", "I")
+        result = result.replace(" ", "")
+        result = result.replace("-", "")
+        result = result.replace("·", "")
+        val resultMatch = getMatchedString(result, Regex(brasilRegex))
+        if (resultMatch != null)
+            return resultMatch.take(7)
+        else {
+            var temp = result
+            if (temp.length == 7) {
+                if (findCharAtIndex(temp, 3) == 'G' || findCharAtIndex(temp, 3) == 'O')
+                    temp = replaceCharAtIndex(temp, 3, '0')
+                if (findCharAtIndex(temp, 5) == 'G' || findCharAtIndex(temp, 5) == 'O')
+                    temp = replaceCharAtIndex(temp, 5, '0')
+                if (findCharAtIndex(temp, 6) == 'G' || findCharAtIndex(temp, 6) == 'O')
+                    temp = replaceCharAtIndex(temp, 6, '0')
+
+                if (findCharAtIndex(temp, 3) == 'B')
+                    temp = replaceCharAtIndex(temp, 3, '8')
+                if (findCharAtIndex(temp, 5) == 'B')
+                    temp = replaceCharAtIndex(temp, 5, '8')
+                if (findCharAtIndex(temp, 6) == 'B')
+                    temp = replaceCharAtIndex(temp, 6, '8')
+            }
+            val resultMatch2 = getMatchedString(temp, Regex(brasilRegex))
+            if (resultMatch2 != null)
+                return resultMatch2.take(7)
+        }
+
+        return ""
+    }
+
+    private fun replaceCharAtIndex(originalString: String, index: Int, newChar: Char): String {
+        val charArray = originalString.toCharArray()
+        charArray[index] = newChar
+        return String(charArray)
+    }
+
+    private fun findCharAtIndex(inputString: String, index: Int): Char? {
+        return if (index >= 0 && index < inputString.length) {
+            inputString[index]
+        } else {
+            null
+        }
+    }
+
+    fun getSecondsBetweenDates(start: LocalDateTime, end: LocalDateTime): Long {
+        val duration = Duration.between(start, end)
+
+        return duration.seconds
+    }
+
+    fun showDialog(activity: Activity, info: String?, title: String?) {
+        val dialog = Dialog(activity)
+        if (title == null) {
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        }
+        dialog.setCancelable(false)
+        dialog.setContentView(R.layout.dialog_custom_layout)
+        dialog.window?.setLayout(
+            (activity.resources.displayMetrics.widthPixels * 0.8).toInt(),
+            (activity.resources.displayMetrics.heightPixels * 0.8).toInt()
+        )
+        val buttonFechar = dialog.findViewById(R.id.buttonFechar) as Button
+        val textViewInfo = dialog.findViewById(R.id.textViewInfo) as TextView
+        if (title == null) {
+            textViewInfo.text = Html.fromHtml(info, Html.FROM_HTML_MODE_LEGACY)
+        } else {
+            dialog.setTitle(title)
+            textViewInfo.text = info
+            buttonFechar.textSize = 20F
+            buttonFechar.width = 120
+            buttonFechar.height = 40
+        }
+
+        buttonFechar.setOnClickListener {
+            dialog.dismiss()
+        }
+        dialog.show()
+    }
+
+    @Throws(IOException::class)
+    fun getFileFromAssets(context: Context, fileName: String): File =
+        File(context.cacheDir, fileName)
+            .also {
+                it.outputStream().use { cache ->
+                    context.assets.open(fileName).use { inputStream ->
+                        inputStream.copyTo(cache)
+                    }
+                }
+            }
+
+    fun getSimples(value: String): String {
+        val decodedBytes: ByteArray = Base64.decode(value, Base64.DEFAULT)
+
+        return String(decodedBytes, Charset.forName("UTF-8"))
+    }
+
+    fun bitmapToBase64(bitmap: Bitmap): String {
+        val outputStream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+        val byteArray = outputStream.toByteArray()
+        return Base64.encodeToString(byteArray, Base64.NO_WRAP)
+    }
+
+    fun generateUUID(): String {
+        val uuid = UUID.randomUUID()
+        return uuid.toString()
+    }
+
+    fun clearSharedPreferences(context: Context, sharedPreferencesName: String) {
+        val sharedPreferences =
+            context.getSharedPreferences(sharedPreferencesName, Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.clear()
+        editor.apply()
+    }
+
+    fun resolutionCorrection(resolutions: MutableList<Resolution>): Resolution {
+        var width = 1280
+        var height = 720
+
+        val intersection = mutableListOf<Resolution>()
+        resolutions.forEach { size ->
+            if (resolutionsPermited.any { it.width == size.width && it.height == size.height })
+                intersection.add(size)
+        }
+
+        if (intersection.isNotEmpty()) {
+            val maxPreviewSize = intersection.maxBy { it.width }
+            width = maxPreviewSize.width
+            height = maxPreviewSize.height
+        }
+
+        return Resolution(width, height)
+    }
+
+    private val resolutionsPermited = arrayOf(
+        Resolution(3840, 2160),
+        Resolution(3264, 2448),
+        Resolution(3264, 1836),
+        Resolution(3840, 2160),
+        Resolution(3264, 2448),
+        Resolution(3264, 1836),
+        Resolution(1920, 1080),
+        Resolution(1280, 960),
+        Resolution(1280, 720),
+        Resolution(800, 600),
+        Resolution(720, 480),
+        Resolution(640, 480),
+        Resolution(720, 480),
+        Resolution(640, 480),
+        Resolution(352, 288),
+        Resolution(320, 240),
+    )
 }

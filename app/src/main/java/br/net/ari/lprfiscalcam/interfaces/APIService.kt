@@ -9,34 +9,64 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 
 interface APIService {
-    @GET("Cliente/GetByLoginAndSenha/{login}/{senha}")
-    fun getClienteByLoginAndSenha(
-        @Path("login") login: String?,
-        @Path("senha") senha: String?
-    ): Call<Cliente?>
+//    @GET("v1/Cliente/GetByLoginAndSenha/{login}/{senha}")
+//    fun getClienteByLoginAndSenha(
+//        @Path("login") login: String?,
+//        @Path("senha") senha: String?
+//    ): Call<Cliente?>
+//
+//    @GET("v1/Fiscalizacao/GetByCliente")
+//    fun getFiscalizacoes(): Call<List<Fiscalizacao>?>
 
-    @GET("Fiscalizacao/GetByCliente")
-    fun getFiscalizacoes(): Call<List<Fiscalizacao>?>
+    @GET("v1/Parametro/GetDataAtualizacao")
+    fun getDataAtualizacao(): Call<String?>
 
-    @POST("FiscalizacaoVeiculo/SetFromCameraANPR")
+    @GET("v2/Fiscalizacao/GetByCodigoAndCamera/{codigo}/{cameraId}")
+    fun getFiscalizacao(
+        @Path("codigo") codigo: String?,
+        @Path("cameraId") cameraId: Long?
+    ): Call<Fiscalizacao?>
+
+    @POST("v1/FiscalizacaoVeiculo/SetFromCameraANPR")
     fun setVeiculo(@Body veiculo: Veiculo?): Call<Veiculo?>
 
-    @POST("FiscalizacaoVeiculo/SaveFromVaxtorANPR")
+    @POST("v1/FiscalizacaoVeiculo/SaveFromVaxtorANPR")
     fun postVeiculo(@Body veiculo: Veiculo?): Call<String?>
 
-    @GET("Camera/GetCameraByChaveVaxtor/{chave}")
-    fun getCameraByChaveVaxtor(
-        @Path("chave") chave: String?
+//    @GET("v1/Camera/GetCameraByChaveVaxtor/{chave}")
+//    fun getCameraByChaveVaxtor(
+//        @Path("chave") chave: String?
+//    ): Call<Camera?>
+
+//    @GET("v1/Camera/GetCameraByChave/{chave}")
+//    fun getCameraByChave(
+//        @Path("chave") chave: String?
+//    ): Call<Camera?>
+
+//    @GET("v2/Camera/GetCameraByChave/{chave}/{uuid}")
+//    fun getCameraByChave(
+//        @Path("chave") chave: String?,
+//        @Path("uuid") uuid: String?
+//    ): Call<Camera?>
+
+    @GET("v2/Camera/GetCameraByChaveAnon/{chave}/{uuid}")
+    fun getCameraByChaveAnon(
+        @Path("chave") chave: String?,
+        @Path("uuid") uuid: String?
     ): Call<Camera?>
 
-    @GET("Camera/GetCameraByChave/{chave}")
-    fun getCameraByChave(
-        @Path("chave") chave: String?
+    @GET("v2/Camera/CleanCameraByChave/{chave}/{uuid}")
+    fun cleanCameraByChave(
+        @Path("chave") chave: String?,
+        @Path("uuid") uuid: String?
     ): Call<Camera?>
 
-    @PATCH("Camera/SetC2VByChave")
-    fun patchC2VByChave(@Body camera: Camera?): Call<Camera?>
+    @POST("v1/FiscalizacaoVeiculo/GetPlaca")
+    fun getPlaca(@Body veiculo: Veiculo?): Call<Veiculo?>
 
-    @POST("CameraLog/SetLog")
-    fun setLog(@Body camera: CameraLog?): Call<Void?>
+    @PATCH("v1/Camera/AtualizaBateriaTemperaturaByChave")
+    fun setCamera(@Body camera: Camera?): Call<Camera?>
+
+    @PATCH("v2/Camera/AtualizaBateriaTemperaturaByChave")
+    fun setCamera2(@Body camera: Camera?): Call<Camera?>
 }

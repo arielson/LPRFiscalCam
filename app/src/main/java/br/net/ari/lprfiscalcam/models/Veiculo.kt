@@ -13,4 +13,5 @@ class Veiculo {
     var fiscalizacaoId: Long? = null
     var latitude: Double? = null
     var longitude: Double? = null
+    var aferidor: Int? = null
 }
