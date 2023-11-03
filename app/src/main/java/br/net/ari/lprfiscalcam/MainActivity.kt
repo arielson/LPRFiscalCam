@@ -1,5 +1,6 @@
 package br.net.ari.lprfiscalcam
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.hardware.usb.UsbManager
@@ -7,6 +8,7 @@ import android.os.Bundle
 import android.text.InputFilter
 import android.view.View
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import br.net.ari.lprfiscalcam.core.PermissionUtils
@@ -22,6 +24,9 @@ import java.util.*
 
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var buttonAcessarCodigo: Button
+    private lateinit var textFieldCodigo: TextInputLayout
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -33,152 +38,14 @@ class MainActivity : AppCompatActivity() {
         val editor = sharedPreference.edit()
 
         val activity: AppCompatActivity = this
-//        val textFieldLogin = findViewById<TextInputLayout>(R.id.textFieldLogin)
-//        val textFieldSenha = findViewById<TextInputLayout>(R.id.textFieldSenha)
-        val textFieldCodigo = findViewById<TextInputLayout>(R.id.textFieldCodigo)
+        textFieldCodigo = findViewById(R.id.textFieldCodigo)
         val relativeLayoutLoading = findViewById<RelativeLayout>(R.id.relativeLayoutLoading)
-//        val spinnerCamera = findViewById<Spinner>(R.id.spinnerCamera)
-//        val linearLayoutLogin = findViewById<LinearLayout>(R.id.linearLayoutLogin)
-//        val linearLayoutCamera = findViewById<LinearLayout>(R.id.linearLayoutCamera)
-//        val buttonLogin = findViewById<Button>(R.id.buttonLogin)
-        val buttonAcessarCodigo = findViewById<Button>(R.id.buttonAcessarCodigo)
+        buttonAcessarCodigo = findViewById(R.id.buttonAcessarCodigo)
+        val buttonAcessarQrCode = findViewById<Button>(R.id.buttonAcessarQrCode)
 
-//        buttonLogin.setOnClickListener {
-//            val login = textFieldLogin.editText?.text.toString()
-//            val senhaLimpa = textFieldSenha.editText?.text.toString()
-//            if (login.isEmpty()) {
-//                Toast.makeText(applicationContext, "Digite o usuário", Toast.LENGTH_LONG).show()
-//                textFieldLogin.findFocus()
-//                return@setOnClickListener
-//            }
-//            if (senhaLimpa.isEmpty()) {
-//                Toast.makeText(applicationContext, "Digite a senha", Toast.LENGTH_LONG).show()
-//                textFieldSenha.findFocus()
-//                return@setOnClickListener
-//            }
-//            val senha = Utilities.sha256(senhaLimpa)
-//            relativeLayoutLoading.visibility = View.VISIBLE
-//            Utilities.service().getClienteByLoginAndSenha(login, senha)
-//                .enqueue(object : Callback<Cliente?> {
-//                    override fun onResponse(call: Call<Cliente?>, response: Response<Cliente?>) {
-//                        if (response.isSuccessful) {
-//                            Utilities.cliente = response.body()
-//                            Utilities.service().getFiscalizacoes()
-//                                .enqueue(object : Callback<List<Fiscalizacao>?> {
-//                                    override fun onResponse(
-//                                        call: Call<List<Fiscalizacao>?>,
-//                                        response: Response<List<Fiscalizacao>?>
-//                                    ) {
-//                                        relativeLayoutLoading.visibility = View.GONE
-//                                        if (response.isSuccessful) {
-//                                            editor.putString("login", login)
-//                                            editor.putString("senha", senhaLimpa)
-//                                            editor.apply()
-//
-//                                            textFieldLogin.editText!!.setText("")
-//                                            textFieldSenha.editText!!.setText("")
-//                                            Toast.makeText(
-//                                                applicationContext,
-//                                                "Bem vindo(a) " + Utilities.cliente?.nome,
-//                                                Toast.LENGTH_LONG
-//                                            ).show()
-//                                            val fiscalizacoes =
-//                                                response.body() as List<Fiscalizacao>
-//                                            val adapter: ArrayAdapter<Fiscalizacao> =
-//                                                FiscalizacaoAdapter(
-//                                                    activity,
-//                                                    android.R.layout.simple_spinner_item,
-//                                                    fiscalizacoes
-//                                                )
-//                                            spinnerCamera.adapter = adapter
-//                                            linearLayoutLogin.visibility = View.GONE
-//                                            linearLayoutCamera.visibility = View.VISIBLE
-//                                            hideKeyboard(it)
-//
-//                                            if (sharedPreference.contains("fiscalizacao")) {
-//                                                val fiscalizacaoId =
-//                                                    sharedPreference.getLong("fiscalizacao", 0)
-//                                                val items = retrieveAllItems(spinnerCamera)
-//
-//                                                var index: Int? = null
-//                                                for (i in 0 until items.size) {
-//                                                    if (items[i].id == fiscalizacaoId) {
-//                                                        index = i
-//                                                        Log.d("Fiscalização", items[i].codigo!!)
-//                                                        break
-//                                                    }
-//                                                }
-//                                                if (index != null) {
-//                                                    spinnerCamera.setSelection(index)
-//                                                    buttonAcessar.performClick()
-//                                                }
-//                                            }
-//                                        } else {
-//                                            try {
-//                                                Toast.makeText(
-//                                                    applicationContext, Utilities.analiseException(
-//                                                        response.code(),
-//                                                        response.raw().toString(),
-//                                                        if (response.errorBody() != null) response.errorBody()!!
-//                                                            .string() else null,
-//                                                        applicationContext
-//                                                    ), Toast.LENGTH_LONG
-//                                                ).show()
-//                                            } catch (e: IOException) {
-//                                                e.printStackTrace()
-//                                            }
-//                                        }
-//                                    }
-//
-//                                    override fun onFailure(
-//                                        call: Call<List<Fiscalizacao>?>,
-//                                        t: Throwable
-//                                    ) {
-//                                        relativeLayoutLoading.visibility = View.GONE
-//                                        try {
-//                                            Toast.makeText(
-//                                                applicationContext, Utilities.analiseException(
-//                                                    response.code(),
-//                                                    response.raw().toString(),
-//                                                    if (response.errorBody() != null) response.errorBody()!!
-//                                                        .string() else null,
-//                                                    applicationContext
-//                                                ), Toast.LENGTH_LONG
-//                                            ).show()
-//                                        } catch (e: IOException) {
-//                                            e.printStackTrace()
-//                                        }
-//                                    }
-//                                })
-//                        } else {
-//                            relativeLayoutLoading.visibility = View.GONE
-//                            try {
-//                                Toast.makeText(
-//                                    applicationContext, Utilities.analiseException(
-//                                        response.code(),
-//                                        response.raw().toString(),
-//                                        if (response.errorBody() != null) response.errorBody()!!
-//                                            .string() else null,
-//                                        applicationContext
-//                                    ), Toast.LENGTH_LONG
-//                                ).show()
-//                            } catch (e: IOException) {
-//                                e.printStackTrace()
-//                            }
-//                        }
-//                    }
-//
-//                    override fun onFailure(call: Call<Cliente?>, t: Throwable) {
-//                        relativeLayoutLoading.visibility = View.GONE
-//                        Toast.makeText(
-//                            applicationContext,
-//                            getString(R.string.service_failure),
-//                            Toast.LENGTH_LONG
-//                        ).show()
-//                        t.printStackTrace()
-//                    }
-//                })
-//        }
+        buttonAcessarQrCode.setOnClickListener {
+            readBarcode()
+        }
 
         buttonAcessarCodigo.setOnClickListener {
             if (textFieldCodigo.editText.toString().isEmpty()) {
@@ -213,7 +80,6 @@ class MainActivity : AppCompatActivity() {
                                         val camera = response.body()!!
                                         camera.chaveLprFiscal = chave
                                         editor.putString("chave", camera.chaveLprFiscal)
-                                        editor.putString("chave_lprfiscal", camera.chaveLprFiscal)
                                         editor.putLong("camera", camera.id)
                                         editor.putString("uuid", uuid)
                                         editor.apply()
@@ -251,9 +117,10 @@ class MainActivity : AppCompatActivity() {
 
                 return@setOnClickListener
             } else {
-//                buttonAcessarCodigo.isEnabled = false
+                relativeLayoutLoading.visibility = View.VISIBLE
                 val uuid = sharedPreference.getString("uuid", "")
-                Utilities.service().getCameraByChaveAnon(sharedPreference.getString("chave", ""), uuid)
+                Utilities.service()
+                    .getCameraByChaveAnon(sharedPreference.getString("chave", ""), uuid)
                     .enqueue(object : Callback<Camera?> {
                         override fun onResponse(
                             call: Call<Camera?>,
@@ -328,34 +195,16 @@ class MainActivity : AppCompatActivity() {
                                         t: Throwable
                                     ) {
                                         t.printStackTrace()
-                                        relativeLayoutLoading.visibility = View.GONE
                                         Toast.makeText(
                                             applicationContext,
                                             R.string.service_failure,
                                             Toast.LENGTH_LONG
                                         ).show()
+                                        relativeLayoutLoading.visibility = View.GONE
                                     }
                                 })
-
-//                                val fiscalizacao = spinnerCamera.selectedItem as Fiscalizacao
-//                                editor.putLong("fiscalizacao", fiscalizacao.id)
-//                                editor.apply()
-//
-//                                val usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
-//                                if (usbManager.deviceList.isEmpty()) {
-//                                    CameraActivity.fiscalizacao = fiscalizacao
-//                                    CameraActivity.binData = 0
-//                                    val intent = Intent(activity, CameraActivity::class.java)
-//                                    startActivity(intent)
-//                                } else {
-//                                    CameraUSBActivity.fiscalizacaoId = fiscalizacao.id
-//                                    val intent = Intent(activity, CameraUSBActivity::class.java)
-//                                    startActivity(intent)
-//                                }
-//
-//                                buttonAcessarCodigo.isEnabled = true
-//                                finish()
                             } else {
+                                relativeLayoutLoading.visibility = View.GONE
                                 Utilities.showDialog(
                                     activity,
                                     Utilities.analiseException(
@@ -366,12 +215,7 @@ class MainActivity : AppCompatActivity() {
                                     ),
                                     "Aviso"
                                 )
-                                editor.remove("uuid")
-                                editor.remove("chave")
-                                editor.apply()
                             }
-                            relativeLayoutLoading.visibility = View.GONE
-                            buttonAcessarCodigo.isEnabled = true
                         }
 
                         override fun onFailure(call: Call<Camera?>, t: Throwable) {
@@ -388,32 +232,25 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-//        val buttonSair = findViewById<Button>(R.id.buttonSair)
-//        buttonSair.setOnClickListener {
-//            Utilities.cliente = null
-//            linearLayoutLogin.visibility = View.VISIBLE
-//            linearLayoutCamera.visibility = View.GONE
-//        }
-//
         if (sharedPreference.contains("codigo")) {
             textFieldCodigo.editText?.setText(sharedPreference.getString("codigo", ""))
         }
     }
 
-//    fun retrieveAllItems(theSpinner: Spinner): MutableList<Fiscalizacao> {
-//        val adapter: Adapter = theSpinner.adapter
-//        val n = adapter.count
-//        val items: MutableList<Fiscalizacao> = ArrayList(n)
-//        for (i in 0 until n) {
-//            val item = adapter.getItem(i) as Fiscalizacao
-//            items.add(item)
-//        }
-//        return items
-//    }
-//
-//    fun Context.hideKeyboard(view: View) {
-//        val inputMethodManager =
-//            getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
-//        inputMethodManager.hideSoftInputFromWindow(view.windowToken, 0)
-//    }
+    private val barcodeScannerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val barcodeRawValue = result.data?.getStringExtra(
+                BarCodeScannerActivity.RESULT_BARCODE_RAW_VALUE
+            ) ?: ""
+            textFieldCodigo.editText?.setText(barcodeRawValue)
+            buttonAcessarCodigo.performClick()
+        }
+    }
+
+    private fun readBarcode() {
+        val intent = Intent(this, BarCodeScannerActivity::class.java)
+        barcodeScannerLauncher.launch(intent)
+    }
 }
