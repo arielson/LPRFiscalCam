@@ -18,6 +18,9 @@ interface APIService {
 //    @GET("v1/Fiscalizacao/GetByCliente")
 //    fun getFiscalizacoes(): Call<List<Fiscalizacao>?>
 
+    @GET("v1/Parametro/GetDataAtualizacao")
+    fun getDataAtualizacao(): Call<String?>
+
     @GET("v1/Fiscalizacao/GetByCodigo/{codigo}")
     fun getFiscalizacao(@Path("codigo") codigo: String?): Call<Fiscalizacao?>
 

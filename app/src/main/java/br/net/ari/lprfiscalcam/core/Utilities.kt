@@ -38,8 +38,9 @@ object Utilities {
     private const val ServiceUrl = "https://$Host/api/"
     private var service: APIService? = null
     private val interceptor = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
-//    var cliente: Cliente? = null
+
     var token: String? = null
+
     private fun okHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
             .readTimeout(60, TimeUnit.SECONDS)
@@ -97,34 +98,6 @@ object Utilities {
         return outputStream.toByteArray()
     }
 
-//    fun getScaledImage(originalImage: ByteArray, newWidth: Int, newHeight: Int): ByteArray? {
-//        val bitmapImage = BitmapFactory.decodeByteArray(originalImage, 0, originalImage.size)
-//        val mutableBitmapImage = Bitmap.createScaledBitmap(bitmapImage, newWidth, newHeight, false)
-//        val outputStream = ByteArrayOutputStream()
-//        mutableBitmapImage.compress(Bitmap.CompressFormat.PNG, 0, outputStream)
-//        if (mutableBitmapImage != bitmapImage) {
-//            mutableBitmapImage.recycle()
-//        }
-//        bitmapImage.recycle()
-//        return outputStream.toByteArray()
-//    }
-
-//    fun sha256(base: String): String {
-//        return try {
-//            val digest = MessageDigest.getInstance("SHA-256")
-//            val hash = digest.digest(base.toByteArray(StandardCharsets.UTF_8))
-//            val hexString = StringBuilder()
-//            for (b in hash) {
-//                val hex = Integer.toHexString(0xff and b.toInt())
-//                if (hex.length == 1) hexString.append('0')
-//                hexString.append(hex)
-//            }
-//            hexString.toString()
-//        } catch (ex: Exception) {
-//            throw RuntimeException(ex)
-//        }
-//    }
-
     fun analiseException(code: Int, raw: String?, error: String?, context: Context): String? {
         return try {
             assert(error != null)
@@ -180,10 +153,6 @@ object Utilities {
 
         return "#000000"
     }
-
-//    fun greatestCommonFactor(width: Int, height: Int): Int {
-//        return if (height == 0) width else greatestCommonFactor(height, width % height)
-//    }
 
     const val brasilRegex = "[A-Z]{3}\\d[A-Z0-9]{1}\\d{2}"
 

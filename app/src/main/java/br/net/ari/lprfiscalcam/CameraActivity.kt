@@ -98,6 +98,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
     private lateinit var buttonBrilhoMais: Button
     private lateinit var textViewPlateLog: TextView
     private lateinit var mediaPlayer: MediaPlayer
+    private lateinit var textViewDataAtualizacao: TextView
 
     @SuppressLint("UseSwitchCompatOrMaterialCode")
     private lateinit var switchNoite: Switch
@@ -241,6 +242,31 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         buttonBrilhoMenos = findViewById(R.id.buttonBrilhoMenos)
         buttonBrilhoMais = findViewById(R.id.buttonBrilhoMais)
         textViewBrilho = findViewById(R.id.textViewBrilho)
+        textViewDataAtualizacao = findViewById(R.id.textViewDataAtualizacao)
+
+        val timer = Timer()
+        val task = object : TimerTask() {
+            override fun run() {
+                Utilities.service().getDataAtualizacao().enqueue(object : Callback<String?> {
+                    override fun onResponse(
+                        call: Call<String?>,
+                        response: Response<String?>
+                    ) {
+                        if (response.isSuccessful && response.body() != null) {
+                            textViewDataAtualizacao.text = response.body()
+                        }
+                    }
+
+                    override fun onFailure(
+                        call: Call<String?>,
+                        t: Throwable
+                    ) {
+                        t.printStackTrace()
+                    }
+                })
+            }
+        }
+        timer.schedule(task, 0, 1800000)
 
         switchNoite = findViewById(R.id.switchNoite)
         switchNoite.isChecked = binData == 1

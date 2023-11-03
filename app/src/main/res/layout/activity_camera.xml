@@ -221,6 +221,17 @@
                             android:layout_margin="8dp"
                             style="?android:attr/buttonBarButtonStyle" />
 
+                        <TextView
+                            android:id="@+id/textViewDataAtualizacao"
+                            android:scrollbars = "vertical"
+                            android:textColor="@color/white"
+                            android:textAlignment="center"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:layout_width="120dp"
+                            android:layout_height="wrap_content"
+                            tools:ignore="SmallSp" />
+
                         <Switch
                             android:id="@+id/switchNoite"
                             android:visibility="gone"
