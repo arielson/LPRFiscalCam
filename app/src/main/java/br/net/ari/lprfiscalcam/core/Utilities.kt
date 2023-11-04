@@ -33,13 +33,14 @@ import java.util.concurrent.TimeUnit
 
 object Utilities {
     private const val Host = "lprfiscalapi.ari.net.br"
-//    private const val Host = "e17e-191-252-210-100.ngrok-free.app"
+//    private const val Host = "c1c6-191-135-95-183.ngrok-free.app"
 
     private const val ServiceUrl = "https://$Host/api/"
     private var service: APIService? = null
     private val interceptor = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
 
     var token: String? = null
+    var appVersion : String = ""
 
     private fun okHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
@@ -53,6 +54,8 @@ object Utilities {
                         "Authorization",
                         if (token != null) "bearer $token" else ""
                     )
+                    .header("AppVersion", appVersion)
+                    .header("AppType", "1")
                 val request: Request = requestBuilder.build()
                 chain.proceed(request)
             })
@@ -96,6 +99,25 @@ object Utilities {
         }
         bitmapImage.recycle()
         return outputStream.toByteArray()
+    }
+
+    fun reduceBitmapResolutionWithFixedWidthToByteArray(
+        bitmap: Bitmap,
+        targetWidth: Int
+    ): ByteArray {
+        val originalWidth = bitmap.width
+        val originalHeight = bitmap.height
+
+        val scaleFactor = originalWidth.toFloat() / targetWidth
+
+        val newHeight = (originalHeight / scaleFactor).toInt()
+
+        val scaledBitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, newHeight, false)
+
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream)
+
+        return byteArrayOutputStream.toByteArray()
     }
 
     fun analiseException(code: Int, raw: String?, error: String?, context: Context): String? {
