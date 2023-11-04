@@ -13,7 +13,7 @@ object PermissionUtils {
 
     val cameraPermissions = listOf(Permission.CAMERA) //, Permission.WRITE, Permission.READ)
 
-    val locationPermissions = listOf(Permission.COARSE_LOCATION, Permission.FINE_LOCATION)
+    val locationPermissions = listOf(Permission.CAMERA, Permission.COARSE_LOCATION, Permission.FINE_LOCATION)
 
 //    fun requestPermission(
 //        fragment: Fragment,
