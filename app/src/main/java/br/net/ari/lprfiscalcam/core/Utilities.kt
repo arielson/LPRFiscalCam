@@ -108,12 +108,13 @@ object Utilities {
     ): ByteArray {
         val originalWidth = bitmap.width
         val originalHeight = bitmap.height
-
-        val scaleFactor = originalWidth.toFloat() / targetWidth
-
-        val newHeight = (originalHeight / scaleFactor).toInt()
-
-        val scaledBitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, newHeight, false)
+        val scaledBitmap : Bitmap = if (originalWidth > targetWidth) {
+            val scaleFactor = originalWidth.toFloat() / targetWidth
+            val newHeight = (originalHeight / scaleFactor).toInt()
+            Bitmap.createScaledBitmap(bitmap, targetWidth, newHeight, false)
+        } else {
+            bitmap
+        }
 
         val byteArrayOutputStream = ByteArrayOutputStream()
         scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream)
