@@ -1,6 +1,7 @@
 package br.net.ari.lprfiscalcam
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
@@ -21,6 +22,8 @@ class CameraUSBActivity : AppCompatActivity() {
     private lateinit var locationCallback: LocationCallback
     var latitude: Double? = null
     var longitude: Double? = null
+
+    var ocrConfidence by Delegates.notNull<Float>()
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -95,6 +98,9 @@ class CameraUSBActivity : AppCompatActivity() {
                 .add(R.id.fragment_container, fragment, "fragment_camera_u_s_b")
                 .commit()
         }
+
+        val sharedPreference = getSharedPreferences("lprfiscalcam", Context.MODE_PRIVATE)
+        ocrConfidence = sharedPreference.getFloat("ocrconfidence", 0.95f)
     }
 
     companion object {

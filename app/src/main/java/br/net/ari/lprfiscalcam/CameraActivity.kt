@@ -878,7 +878,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         imageWidth: Int,
         bitmap: Bitmap
     ) {
-        if (results != null) {
+         if (results != null) {
             for (result in results) {
                 val bndbox = result.boundingBox
                 val confidence = result.categories.first().score

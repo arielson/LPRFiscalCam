@@ -14,6 +14,7 @@ import br.net.ari.lprfiscalcam.R
 import br.net.ari.lprfiscalcam.data.Resolution
 import br.net.ari.lprfiscalcam.interfaces.APIService
 import com.google.gson.GsonBuilder
+import com.jiangdg.ausbc.camera.bean.PreviewSize
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -90,16 +91,16 @@ object Utilities {
             rect.height().toInt()
         )
 
-    fun getScaledImage(bitmapImage: Bitmap, newWidth: Int, newHeight: Int): ByteArray {
-        val mutableBitmapImage = Bitmap.createScaledBitmap(bitmapImage, newWidth, newHeight, false)
-        val outputStream = ByteArrayOutputStream()
-        mutableBitmapImage.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
-        if (mutableBitmapImage != bitmapImage) {
-            mutableBitmapImage.recycle()
-        }
-        bitmapImage.recycle()
-        return outputStream.toByteArray()
-    }
+//    fun getScaledImage(bitmapImage: Bitmap, newWidth: Int, newHeight: Int): ByteArray {
+//        val mutableBitmapImage = Bitmap.createScaledBitmap(bitmapImage, newWidth, newHeight, false)
+//        val outputStream = ByteArrayOutputStream()
+//        mutableBitmapImage.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+//        if (mutableBitmapImage != bitmapImage) {
+//            mutableBitmapImage.recycle()
+//        }
+//        bitmapImage.recycle()
+//        return outputStream.toByteArray()
+//    }
 
     fun reduceBitmapResolutionWithFixedWidthToByteArray(
         bitmap: Bitmap,
@@ -327,6 +328,25 @@ object Utilities {
         resolutions.forEach { size ->
             if (resolutionsPermited.any { it.width == size.width && it.height == size.height })
                 intersection.add(size)
+        }
+
+        if (intersection.isNotEmpty()) {
+            val maxPreviewSize = intersection.maxBy { it.width }
+            width = maxPreviewSize.width
+            height = maxPreviewSize.height
+        }
+
+        return Resolution(width, height)
+    }
+
+    fun resolutionCorrectionUSB(resolutions: MutableList<PreviewSize>): Resolution {
+        var width = 1280
+        var height = 720
+
+        val intersection = mutableListOf<Resolution>()
+        resolutions.forEach { size ->
+            if (resolutionsPermited.any { it.width == size.width && it.height == size.height })
+                intersection.add(Resolution(size.width, size.height))
         }
 
         if (intersection.isNotEmpty()) {
