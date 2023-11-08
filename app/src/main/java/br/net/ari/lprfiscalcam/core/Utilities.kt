@@ -14,6 +14,7 @@ import br.net.ari.lprfiscalcam.R
 import br.net.ari.lprfiscalcam.data.Resolution
 import br.net.ari.lprfiscalcam.interfaces.APIService
 import com.google.gson.GsonBuilder
+import com.jiangdg.ausbc.camera.bean.PreviewSize
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -33,13 +34,14 @@ import java.util.concurrent.TimeUnit
 
 object Utilities {
     private const val Host = "lprfiscalapi.ari.net.br"
-//    private const val Host = "e17e-191-252-210-100.ngrok-free.app"
+//    private const val Host = "c1c6-191-135-95-183.ngrok-free.app"
 
     private const val ServiceUrl = "https://$Host/api/"
     private var service: APIService? = null
     private val interceptor = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
 
     var token: String? = null
+    var appVersion : String = ""
 
     private fun okHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
@@ -53,6 +55,8 @@ object Utilities {
                         "Authorization",
                         if (token != null) "bearer $token" else ""
                     )
+                    .header("AppVersion", appVersion)
+                    .header("AppType", "1")
                 val request: Request = requestBuilder.build()
                 chain.proceed(request)
             })
@@ -87,15 +91,34 @@ object Utilities {
             rect.height().toInt()
         )
 
-    fun getScaledImage(bitmapImage: Bitmap, newWidth: Int, newHeight: Int): ByteArray {
-        val mutableBitmapImage = Bitmap.createScaledBitmap(bitmapImage, newWidth, newHeight, false)
-        val outputStream = ByteArrayOutputStream()
-        mutableBitmapImage.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
-        if (mutableBitmapImage != bitmapImage) {
-            mutableBitmapImage.recycle()
-        }
-        bitmapImage.recycle()
-        return outputStream.toByteArray()
+//    fun getScaledImage(bitmapImage: Bitmap, newWidth: Int, newHeight: Int): ByteArray {
+//        val mutableBitmapImage = Bitmap.createScaledBitmap(bitmapImage, newWidth, newHeight, false)
+//        val outputStream = ByteArrayOutputStream()
+//        mutableBitmapImage.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+//        if (mutableBitmapImage != bitmapImage) {
+//            mutableBitmapImage.recycle()
+//        }
+//        bitmapImage.recycle()
+//        return outputStream.toByteArray()
+//    }
+
+    fun reduceBitmapResolutionWithFixedWidthToByteArray(
+        bitmap: Bitmap,
+        targetWidth: Int
+    ): ByteArray {
+        val originalWidth = bitmap.width
+        val originalHeight = bitmap.height
+
+        val scaleFactor = originalWidth.toFloat() / targetWidth
+
+        val newHeight = (originalHeight / scaleFactor).toInt()
+
+        val scaledBitmap = Bitmap.createScaledBitmap(bitmap, targetWidth, newHeight, false)
+
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream)
+
+        return byteArrayOutputStream.toByteArray()
     }
 
     fun analiseException(code: Int, raw: String?, error: String?, context: Context): String? {
@@ -305,6 +328,25 @@ object Utilities {
         resolutions.forEach { size ->
             if (resolutionsPermited.any { it.width == size.width && it.height == size.height })
                 intersection.add(size)
+        }
+
+        if (intersection.isNotEmpty()) {
+            val maxPreviewSize = intersection.maxBy { it.width }
+            width = maxPreviewSize.width
+            height = maxPreviewSize.height
+        }
+
+        return Resolution(width, height)
+    }
+
+    fun resolutionCorrectionUSB(resolutions: MutableList<PreviewSize>): Resolution {
+        var width = 1280
+        var height = 720
+
+        val intersection = mutableListOf<Resolution>()
+        resolutions.forEach { size ->
+            if (resolutionsPermited.any { it.width == size.width && it.height == size.height })
+                intersection.add(Resolution(size.width, size.height))
         }
 
         if (intersection.isNotEmpty()) {

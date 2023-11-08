@@ -878,7 +878,7 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
         imageWidth: Int,
         bitmap: Bitmap
     ) {
-        if (results != null) {
+         if (results != null) {
             for (result in results) {
                 val bndbox = result.boundingBox
                 val confidence = result.categories.first().score
@@ -894,15 +894,11 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                     bndbox.left = left
                     bndbox.top = top
                     val placa = Utilities.cropBitmap(bitmap, bndbox)
-
-                    val placaInputImage: InputImage = if (placa.width > 640 && placa.height > 480) {
-                        val plateImage =
-                            Utilities.getScaledImage(placa, 640, 480)
-                        val plateResizedBitmap =
-                            BitmapFactory.decodeByteArray(plateImage, 0, plateImage.size)
-                        InputImage.fromBitmap(plateResizedBitmap, 0)
-                    } else
-                        InputImage.fromBitmap(placa, 0)
+                    val plateImage =
+                        Utilities.reduceBitmapResolutionWithFixedWidthToByteArray(placa, 1024)
+                    val plateResizedBitmap =
+                        BitmapFactory.decodeByteArray(plateImage, 0, plateImage.size)
+                    val placaInputImage = InputImage.fromBitmap(plateResizedBitmap, 0)
 
                     recognizer.process(placaInputImage)
                         .addOnSuccessListener { visionText ->
@@ -935,7 +931,10 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
 
                                     placas.add(placaDTO)
                                     val veiculoImage =
-                                        Utilities.getScaledImage(veiculoBitmap, 640, 480)
+                                        Utilities.reduceBitmapResolutionWithFixedWidthToByteArray(
+                                            veiculoBitmap,
+                                            1024
+                                        )
                                     val veiculoImageBase64 =
                                         Base64.encodeToString(veiculoImage, Base64.NO_WRAP)
                                     sendPlate(
@@ -974,11 +973,11 @@ class CameraActivity : AppCompatActivity(), ObjectDetectorHelper.DetectorListene
                                                         val placaDTO = PlateDTO()
                                                         placaDTO.placa = veiculo.placa
                                                         placaDTO.data = LocalDateTime.now()
-                                                        val veiculoImage = Utilities.getScaledImage(
-                                                            veiculoBitmap,
-                                                            640,
-                                                            480
-                                                        )
+                                                        val veiculoImage =
+                                                            Utilities.reduceBitmapResolutionWithFixedWidthToByteArray(
+                                                                veiculoBitmap,
+                                                                1024
+                                                            )
                                                         val veiculoImageBase64 =
                                                             Base64.encodeToString(
                                                                 veiculoImage,
